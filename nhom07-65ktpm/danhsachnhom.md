@@ -1,17 +1,17 @@
 # Danh Sách Thành Viên - Nhóm 07
 
-- **Lớp học phần / Lớp sinh hoạt:** [Tên Lớp của bạn]
-- **Tên đề tài / Ứng dụng:** [Tên Ứng Dụng của bạn]
-- **Giảng viên hướng dẫn:** [Tên Thầy/Cô phụ trách]
+- **Lớp học phần / Lớp sinh hoạt:** 65KTPM
+- **Tên đề tài / Ứng dụng:** DCSleep – Ứng dụng hỗ trợ xây dựng kỷ luật và cải thiện thói quen ngủ bằng trí tuệ nhân tạo
+- **Giảng viên hướng dẫn:** ThS. Đỗ Oanh Cường
 
 ## Bảng Thông Tin Thành Viên
 
 | STT | Họ và Tên | Mã Sinh Viên | Lớp Sinh Hoạt | Vai Trò | Nhiệm Vụ Phân Công | Đóng Góp (%) | Email |
 | :---: | :--- | :---: | :---: | :---: | :--- | :---: | :--- |
-| 1 | Mã Khánh Linh | 2351170602 | 65KTPM | Trưởng nhóm | Quản lý dự án, Kiến trúc, Backend/UI | 100% | mkl.deeptry@gmail.com |
-| 2 | Lê Văn Dân | 2251161963 | 65KTPM | Thành viên | Giao diện UI/UX & Tính năng | 100% | [email_thanh_vien] |
-| 3 | Vũ Bá Đài | 2351170577 | 65KTPM | Thành viên | Tính năng & Kết nối API/DB | 100% | [email_thanh_vien] |
-| 4 | Dương Quốc Vượng | 2351170634 | 65KTPM | Thành viên | Tính năng & Báo cáo đồ án | 100% | [email_thanh_vien] |
+| 1 | Mã Khánh Linh | 2351170602 | 65KTPM | Trưởng nhóm | Giao diện, tài khoản và hồ sơ, Điều phối nhóm | 100% | mkl.deeptry@gmail.com |
+| 2 | Vũ Bá Đài | 2351170577 | 65KTPM | Thành viên | Lịch ngủ, nhắc nhở thông báo và Power Nap | 100% | [email_thanh_vien] |
+| 3 | Dương Quốc Vượng | 2351170634 | 65KTPM | Thành viên | AI Sleep Assistant (Gemini API) & Chat UI | 100% | [email_thanh_vien] |
+| 4 | Lê Văn Dân | 2251161963 | 65KTPM | Thành viên | Nhật ký giấc ngủ, Thống kê biểu đồ & Dữ liệu | 100% | [email_thanh_vien] |
 
 ## Hướng Dẫn Cài Đặt & Khởi Chạy Ứng Dụng
 
