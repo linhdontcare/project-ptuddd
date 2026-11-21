@@ -8,7 +8,7 @@
 
 **Công nghệ sử dụng:** Flutter 3.x, Dart 3.x, `provider`, `sqflite`, `http`, `flutter_secure_storage`.
 
-**Tài liệu đặc tả (Spec):** [spec_ai_sleep_assistant.md](file:///d:/Nhom_mobile/project-ptuddd/nhom07-65ktpm/docs/plan/spec_ai_sleep_assistant.md)
+**Tài liệu đặc tả (Spec):** [spec_ai_sleep_assistant.md](file:///d:/Nhom_mobile/project-ptuddd/nhom07-65ktpm/docs/spec/spec_ai_sleep_assistant.md)
 
 ---
 
