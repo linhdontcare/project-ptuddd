@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../data/database/database_helper.dart';
 import '../data/models/reminder_model.dart';
 import '../data/models/user_model.dart';
@@ -40,4 +41,3 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
-

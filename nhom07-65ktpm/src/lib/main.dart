@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'core/theme/app_theme.dart';
 import 'providers/sleep_provider.dart';
 import 'providers/nap_provider.dart';
@@ -21,8 +22,12 @@ class DCSleepApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => SleepProvider()..loadData()),
         ChangeNotifierProvider(create: (_) => NapProvider()..loadHistory()),
-        ChangeNotifierProvider(create: (_) => AIAssistantProvider()..loadMessages()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()..loadSettings()),
+        ChangeNotifierProvider(
+          create: (_) => AIAssistantProvider()..loadMessages(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => SettingsProvider()..loadSettings(),
+        ),
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, _) {

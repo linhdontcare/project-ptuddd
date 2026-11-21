@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/time_utils.dart';
 import '../../providers/sleep_provider.dart';
@@ -66,16 +67,18 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
 
   Future<void> _saveGoal() async {
     await context.read<SleepProvider>().updateGoal(
-          bedtimeHour: _bedtime.hour,
-          bedtimeMinute: _bedtime.minute,
-          wakeHour: _wakeTime.hour,
-          wakeMinute: _wakeTime.minute,
-          targetDurationHours: _targetDuration,
-        );
+      bedtimeHour: _bedtime.hour,
+      bedtimeMinute: _bedtime.minute,
+      wakeHour: _wakeTime.hour,
+      wakeMinute: _wakeTime.minute,
+      targetDurationHours: _targetDuration,
+    );
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã cập nhật mục tiêu giấc ngủ thành công!')),
+        const SnackBar(
+          content: Text('Đã cập nhật mục tiêu giấc ngủ thành công!'),
+        ),
       );
       Navigator.pop(context);
     }
@@ -84,9 +87,7 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Thiết Lập Mục Tiêu Ngủ'),
-      ),
+      appBar: AppBar(title: const Text('Thiết Lập Mục Tiêu Ngủ')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -124,10 +125,17 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Thời lượng ngủ mục tiêu:', style: TextStyle(fontSize: 15)),
+                    const Text(
+                      'Thời lượng ngủ mục tiêu:',
+                      style: TextStyle(fontSize: 15),
+                    ),
                     Text(
                       TimeUtils.formatDuration(_targetDuration),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.softGreen),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.softGreen,
+                      ),
                     ),
                   ],
                 ),
@@ -163,7 +171,10 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
           child: Icon(icon, color: color),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+        ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -172,7 +183,11 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
           ),
           child: Text(
             timeStr,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ),
         onTap: onTap,
@@ -180,4 +195,3 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
     );
   }
 }
-

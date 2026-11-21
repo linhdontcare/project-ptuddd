@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/time_utils.dart';
@@ -15,9 +16,7 @@ class SettingsScreen extends StatelessWidget {
     final reminders = settingsProv.reminders;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cài Đặt & Quyền Riêng Tư'),
-      ),
+      appBar: AppBar(title: const Text('Cài Đặt & Quyền Riêng Tư')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -28,21 +27,33 @@ class SettingsScreen extends StatelessWidget {
                 backgroundColor: AppTheme.accentIndigo,
                 child: Icon(Icons.person, color: Colors.white),
               ),
-              title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(
+                user.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               subtitle: Text('${user.studentId} • Lớp ${user.className}'),
             ),
           ),
           const SizedBox(height: 16),
 
           // 2. Reminders settings
-          const Text('Cài Đặt Lịch Nhắc Nhở', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const Text(
+            'Cài Đặt Lịch Nhắc Nhở',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
           const SizedBox(height: 8),
           ...reminders.map((r) {
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: SwitchListTile(
                 title: Text(r.title, style: const TextStyle(fontSize: 14)),
-                subtitle: Text('Thời gian: ${TimeUtils.formatTime(r.hour, r.minute)}', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                subtitle: Text(
+                  'Thời gian: ${TimeUtils.formatTime(r.hour, r.minute)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textMuted,
+                  ),
+                ),
                 value: r.isEnabled,
                 activeThumbColor: AppTheme.accentCyan,
                 onChanged: (val) => settingsProv.toggleReminder(r, val),
@@ -52,7 +63,10 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 16),
 
           // 3. Digital Wellbeing & Family Link Guide
-          const Text('Quản Lý Thời Gian Sử Dụng Màn Hình', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const Text(
+            'Quản Lý Thời Gian Sử Dụng Màn Hình',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
           const SizedBox(height: 8),
           Card(
             child: Padding(
@@ -62,16 +76,26 @@ class SettingsScreen extends StatelessWidget {
                 children: const [
                   Row(
                     children: [
-                      Icon(Icons.screen_lock_portrait, color: AppTheme.accentCyan),
+                      Icon(
+                        Icons.screen_lock_portrait,
+                        color: AppTheme.accentCyan,
+                      ),
                       SizedBox(width: 10),
-                      Text('Digital Wellbeing & Không làm phiền', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        'Digital Wellbeing & Không làm phiền',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   ),
                   SizedBox(height: 8),
                   Text(
                     'Để có giấc ngủ ngon, bạn nên bật chế độ "Giờ đi ngủ" (Bedtime Mode) trong Cài đặt hệ điều hành Android. '
                     'Đối với trẻ nhỏ, phụ huynh có thể tự cấu hình ứng dụng Google Family Link để đặt giới hạn thời gian sử dụng thiết bị.',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted, height: 1.4),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textMuted,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
@@ -86,7 +110,9 @@ class SettingsScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.privacy_tip_outlined),
                   title: const Text('Chính sách quyền riêng tư'),
-                  subtitle: const Text('Dữ liệu nhật ký được lưu cục bộ trên máy.'),
+                  subtitle: const Text(
+                    'Dữ liệu nhật ký được lưu cục bộ trên máy.',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     showDialog(
@@ -99,7 +125,10 @@ class SettingsScreen extends StatelessWidget {
                           'chủ động đặt câu hỏi.',
                         ),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đã hiểu')),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Đã hiểu'),
+                          ),
                         ],
                       ),
                     );
@@ -109,7 +138,9 @@ class SettingsScreen extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.info_outline),
                   title: const Text('Phiên bản ứng dụng'),
-                  subtitle: Text('${AppConstants.appName} v${AppConstants.appVersion} (Nhóm 7 - 65KTPM)'),
+                  subtitle: Text(
+                    '${AppConstants.appName} v${AppConstants.appVersion} (Nhóm 7 - 65KTPM)',
+                  ),
                 ),
               ],
             ),
@@ -119,4 +150,3 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
-

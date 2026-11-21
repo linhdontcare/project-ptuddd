@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 class NotificationService {
@@ -10,7 +11,9 @@ class NotificationService {
 
   Future<void> initialize() async {
     // Ready for native local notifications plugin setup
-    debugPrint('[NotificationService] Đã khởi tạo hệ thống thông báo cục bộ DCSleep.');
+    debugPrint(
+      '[NotificationService] Đã khởi tạo hệ thống thông báo cục bộ DCSleep.',
+    );
   }
 
   Future<bool> requestPermission() async {
@@ -24,11 +27,12 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
-    debugPrint('[NotificationService] Đã lên lịch nhắc nhở: $hour:$minute - $title - $body');
+    debugPrint(
+      '[NotificationService] Đã lên lịch nhắc nhở: $hour:$minute - $title - $body',
+    );
   }
 
   Future<void> cancelAllReminders() async {
     debugPrint('[NotificationService] Đã hủy toàn bộ lịch nhắc nhở.');
   }
 }
-

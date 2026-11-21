@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/time_utils.dart';
 import '../../providers/sleep_provider.dart';
@@ -48,7 +49,11 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 16),
 
                     // 2. Discipline Progress Card
-                    _buildDisciplineCard(context, sleepProv.complianceRate, sleepProv.averageDurationHours),
+                    _buildDisciplineCard(
+                      context,
+                      sleepProv.complianceRate,
+                      sleepProv.averageDurationHours,
+                    ),
                     const SizedBox(height: 16),
 
                     // 3. Quick Action Shortcuts
@@ -68,7 +73,10 @@ class HomeScreen extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppTheme.accentIndigo,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Ghi nhật ký ngủ', style: TextStyle(color: Colors.white)),
+        label: const Text(
+          'Ghi nhật ký ngủ',
+          style: TextStyle(color: Colors.white),
+        ),
         onPressed: () {
           Navigator.push(
             context,
@@ -94,7 +102,11 @@ class HomeScreen extends StatelessWidget {
                     color: AppTheme.accentIndigo.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.bedtime_outlined, color: AppTheme.accentCyan, size: 24),
+                  child: const Icon(
+                    Icons.bedtime_outlined,
+                    color: AppTheme.accentCyan,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
@@ -111,7 +123,10 @@ class HomeScreen extends StatelessWidget {
               children: [
                 _buildTimeColumn(
                   label: 'Giờ đi ngủ',
-                  timeStr: TimeUtils.formatTime(goal.bedtimeHour, goal.bedtimeMinute),
+                  timeStr: TimeUtils.formatTime(
+                    goal.bedtimeHour,
+                    goal.bedtimeMinute,
+                  ),
                   icon: Icons.nightlight_round,
                   color: AppTheme.accentCyan,
                 ),
@@ -150,19 +165,30 @@ class HomeScreen extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: 4),
-            Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+            ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
           timeStr,
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildDisciplineCard(BuildContext context, double rate, double avgHours) {
+  Widget _buildDisciplineCard(
+    BuildContext context,
+    double rate,
+    double avgHours,
+  ) {
     return Card(
       color: AppTheme.surfaceNavy,
       child: Padding(
@@ -179,12 +205,17 @@ class HomeScreen extends StatelessWidget {
                     value: rate / 100.0,
                     strokeWidth: 6,
                     backgroundColor: AppTheme.cardNavy,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.softGreen),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppTheme.softGreen,
+                    ),
                   ),
                 ),
                 Text(
                   '${rate.round()}%',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -200,7 +231,10 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Trung bình gần đây: ${TimeUtils.formatDuration(avgHours)}. Đạt mục tiêu ${rate.round()}% các ngày qua.',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textMuted,
+                    ),
                   ),
                 ],
               ),
@@ -221,7 +255,10 @@ class HomeScreen extends StatelessWidget {
               side: const BorderSide(color: AppTheme.accentCyan),
             ),
             icon: const Icon(Icons.flash_on, color: AppTheme.accentCyan),
-            label: const Text('Power Nap (15-20p)', style: TextStyle(color: AppTheme.textLight, fontSize: 13)),
+            label: const Text(
+              'Power Nap (15-20p)',
+              style: TextStyle(color: AppTheme.textLight, fontSize: 13),
+            ),
             onPressed: () => onNavigateTab(2), // Tab Power Nap
           ),
         ),
@@ -232,8 +269,14 @@ class HomeScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 12),
               side: const BorderSide(color: AppTheme.accentIndigo),
             ),
-            icon: const Icon(Icons.smart_toy_outlined, color: AppTheme.accentIndigo),
-            label: const Text('Hỏi Trợ lý AI', style: TextStyle(color: AppTheme.textLight, fontSize: 13)),
+            icon: const Icon(
+              Icons.smart_toy_outlined,
+              color: AppTheme.accentIndigo,
+            ),
+            label: const Text(
+              'Hỏi Trợ lý AI',
+              style: TextStyle(color: AppTheme.textLight, fontSize: 13),
+            ),
             onPressed: () => onNavigateTab(4), // Tab AI Assistant
           ),
         ),
@@ -251,10 +294,16 @@ class HomeScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Nhật Ký Giấc Ngủ Gần Nhất', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Nhật Ký Giấc Ngủ Gần Nhất',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
                 if (record != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: record.isGoalMet ? AppTheme.softGreen.withValues(alpha: 0.2) : AppTheme.softRed.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(6),
@@ -263,7 +312,9 @@ class HomeScreen extends StatelessWidget {
                       record.isGoalMet ? 'Đạt mục tiêu' : 'Chưa đạt',
                       style: TextStyle(
                         fontSize: 11,
-                        color: record.isGoalMet ? AppTheme.softGreen : AppTheme.softRed,
+                        color: record.isGoalMet
+                            ? AppTheme.softGreen
+                            : AppTheme.softRed,
                       ),
                     ),
                   ),
@@ -271,20 +322,29 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             if (record == null)
-              const Text('Chưa có dữ liệu nhật ký. Hãy ghi nhận giấc ngủ hôm nay nhé!',
-                  style: TextStyle(color: AppTheme.textMuted, fontSize: 13))
+              const Text(
+                'Chưa có dữ liệu nhật ký. Hãy ghi nhận giấc ngủ hôm nay nhé!',
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+              )
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Thời lượng: ${TimeUtils.formatDuration(record.durationHours)}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.accentCyan),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.accentCyan,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Từ: ${TimeUtils.formatDateTime(record.sleepTime)} đến ${TimeUtils.formatDateTime(record.wakeTime)}',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textMuted,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -315,7 +375,11 @@ class HomeScreen extends StatelessWidget {
           Expanded(
             child: Text(
               'Mẹo vệ sinh giấc ngủ: Ngừng sử dụng điện thoại ít nhất 30 phút trước khi ngủ giúp mắt thư giãn và kích thích sản sinh melatonin tự nhiên.',
-              style: TextStyle(fontSize: 12, color: AppTheme.textLight, height: 1.4),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.textLight,
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -323,4 +387,3 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-

@@ -34,9 +34,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: surfaceNavy,
         elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -58,4 +56,3 @@ class AppTheme {
     );
   }
 }
-
