@@ -1,18 +1,24 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import '../core/constants/app_constants.dart';
 import '../data/database/database_helper.dart';
 import '../data/models/nap_record_model.dart';
+
+enum NapStatus { notStarted, running, paused, completed }
 
 class NapProvider extends ChangeNotifier {
   int _selectedPresetMinutes = 20;
   int _remainingSeconds = 20 * 60;
-  bool _isRunning = false;
+  NapStatus _status = NapStatus.notStarted;
   Timer? _timer;
   List<NapRecordModel> _napHistory = [];
 
   int get selectedPresetMinutes => _selectedPresetMinutes;
   int get remainingSeconds => _remainingSeconds;
-  bool get isRunning => _isRunning;
+  NapStatus get status => _status;
+  bool get isRunning => _status == NapStatus.running;
   List<NapRecordModel> get napHistory => _napHistory;
 
   double get progress {
@@ -28,54 +34,75 @@ class NapProvider extends ChangeNotifier {
   }
 
   void selectPreset(int minutes) {
-    if (_isRunning) return;
+    if (!AppConstants.napPresetsMinutes.contains(minutes)) {
+      throw ArgumentError.value(minutes, 'minutes', 'Unsupported nap duration');
+    }
+    if (isRunning) return;
     _selectedPresetMinutes = minutes;
     _remainingSeconds = minutes * 60;
+    _status = NapStatus.notStarted;
     notifyListeners();
   }
 
   void startTimer() {
-    if (_isRunning) return;
-    _isRunning = true;
+    if (isRunning || _status == NapStatus.paused) return;
+    if (_status == NapStatus.completed) {
+      _remainingSeconds = _selectedPresetMinutes * 60;
+    }
+    _status = NapStatus.running;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_remainingSeconds > 0) {
+      if (_remainingSeconds > 1) {
         _remainingSeconds--;
         notifyListeners();
       } else {
-        stopTimer(completed: true);
+        _remainingSeconds = 0;
+        _completeTimer();
       }
     });
     notifyListeners();
   }
 
   void pauseTimer() {
+    if (!isRunning) return;
     _timer?.cancel();
-    _isRunning = false;
+    _timer = null;
+    _status = NapStatus.paused;
     notifyListeners();
   }
 
-  void resetTimer() {
+  void resumeTimer() {
+    if (_status != NapStatus.paused) return;
+    startTimer();
+  }
+
+  void cancelTimer() {
     _timer?.cancel();
-    _isRunning = false;
+    _timer = null;
+    _status = NapStatus.notStarted;
     _remainingSeconds = _selectedPresetMinutes * 60;
     notifyListeners();
   }
 
-  Future<void> stopTimer({bool completed = false}) async {
-    _timer?.cancel();
-    _isRunning = false;
+  void resetTimer() => cancelTimer();
 
-    if (completed) {
-      final nap = NapRecordModel(
-        startTime: DateTime.now().subtract(Duration(minutes: _selectedPresetMinutes)),
-        durationMinutes: _selectedPresetMinutes,
-        note: 'Hoàn thành giấc ngủ ngắn $_selectedPresetMinutes phút.',
-      );
-      await DatabaseHelper.instance.insertNapRecord(nap);
-      await loadHistory();
-    }
-    _remainingSeconds = _selectedPresetMinutes * 60;
+  void _completeTimer() {
+    _timer?.cancel();
+    _timer = null;
+    _status = NapStatus.completed;
     notifyListeners();
+    unawaited(_recordCompletedNap());
+  }
+
+  Future<void> _recordCompletedNap() async {
+    final nap = NapRecordModel(
+      startTime: DateTime.now().subtract(
+        Duration(minutes: _selectedPresetMinutes),
+      ),
+      durationMinutes: _selectedPresetMinutes,
+      note: 'Hoàn thành giấc ngủ ngắn $_selectedPresetMinutes phút.',
+    );
+    await DatabaseHelper.instance.insertNapRecord(nap);
+    await loadHistory();
   }
 
   Future<void> loadHistory() async {
@@ -89,4 +116,3 @@ class NapProvider extends ChangeNotifier {
     super.dispose();
   }
 }
-
