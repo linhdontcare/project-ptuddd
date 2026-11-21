@@ -9,18 +9,7 @@ import 'screens/main_navigation_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => SleepProvider()..loadData()),
-        ChangeNotifierProvider(create: (_) => NapProvider()..loadHistory()),
-        ChangeNotifierProvider(create: (_) => AIAssistantProvider()..loadMessages()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()..loadSettings()),
-      ],
-      child: const DCSleepApp(),
-    ),
-  );
+  runApp(const DCSleepApp());
 }
 
 class DCSleepApp extends StatelessWidget {
@@ -28,13 +17,23 @@ class DCSleepApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = context.watch<SettingsProvider>().isDarkMode;
-
-    return MaterialApp(
-      title: 'DCSleep',
-      debugShowCheckedModeBanner: false,
-      theme: isDark ? AppTheme.darkTheme : ThemeData.light(useMaterial3: true),
-      home: const MainNavigationScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SleepProvider()..loadData()),
+        ChangeNotifierProvider(create: (_) => NapProvider()..loadHistory()),
+        ChangeNotifierProvider(create: (_) => AIAssistantProvider()..loadMessages()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..loadSettings()),
+      ],
+      child: Consumer<SettingsProvider>(
+        builder: (context, settings, _) {
+          return MaterialApp(
+            title: 'DCSleep',
+            debugShowCheckedModeBanner: false,
+            theme: settings.isDarkMode ? AppTheme.darkTheme : ThemeData.light(useMaterial3: true),
+            home: const MainNavigationScreen(),
+          );
+        },
+      ),
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import '../../core/constants/app_constants.dart';
@@ -14,10 +15,15 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB(AppConstants.dbName);
-    return _database!;
+  Future<Database?> get database async {
+    if (_database != null) return _database;
+    try {
+      _database = await _initDB(AppConstants.dbName);
+      return _database;
+    } catch (e) {
+      debugPrint('[DatabaseHelper] SQLite fallback: $e');
+      return null;
+    }
   }
 
   Future<Database> _initDB(String filePath) async {
@@ -184,9 +190,11 @@ class DatabaseHelper {
   // --- Sleep Goal CRUD ---
   Future<SleepGoalModel> getSleepGoal() async {
     final db = await database;
-    final maps = await db.query(AppConstants.tableSleepGoals, limit: 1);
-    if (maps.isNotEmpty) {
-      return SleepGoalModel.fromMap(maps.first);
+    if (db != null) {
+      final maps = await db.query(AppConstants.tableSleepGoals, limit: 1);
+      if (maps.isNotEmpty) {
+        return SleepGoalModel.fromMap(maps.first);
+      }
     }
     return SleepGoalModel(
       bedtimeHour: 23,
@@ -199,6 +207,7 @@ class DatabaseHelper {
 
   Future<void> updateSleepGoal(SleepGoalModel goal) async {
     final db = await database;
+    if (db == null) return;
     await db.delete(AppConstants.tableSleepGoals);
     await db.insert(AppConstants.tableSleepGoals, goal.toMap());
   }
@@ -206,6 +215,7 @@ class DatabaseHelper {
   // --- Sleep Records CRUD ---
   Future<List<SleepRecordModel>> getSleepRecords({int limit = 30}) async {
     final db = await database;
+    if (db == null) return [];
     final maps = await db.query(
       AppConstants.tableSleepRecords,
       orderBy: 'created_at DESC',
@@ -216,12 +226,14 @@ class DatabaseHelper {
 
   Future<int> insertSleepRecord(SleepRecordModel record) async {
     final db = await database;
+    if (db == null) return 0;
     return await db.insert(AppConstants.tableSleepRecords, record.toMap());
   }
 
   // --- Nap Records CRUD ---
   Future<List<NapRecordModel>> getNapRecords({int limit = 20}) async {
     final db = await database;
+    if (db == null) return [];
     final maps = await db.query(
       AppConstants.tableNapRecords,
       orderBy: 'created_at DESC',
@@ -232,18 +244,26 @@ class DatabaseHelper {
 
   Future<int> insertNapRecord(NapRecordModel nap) async {
     final db = await database;
+    if (db == null) return 0;
     return await db.insert(AppConstants.tableNapRecords, nap.toMap());
   }
 
   // --- Reminders CRUD ---
   Future<List<ReminderModel>> getReminders() async {
     final db = await database;
+    if (db == null) {
+      return [
+        ReminderModel(title: 'Chuẩn bị đi ngủ', hour: 22, minute: 30, type: 'bedtime'),
+        ReminderModel(title: 'Thức giấc đúng giờ', hour: 7, minute: 0, type: 'wake'),
+      ];
+    }
     final maps = await db.query(AppConstants.tableReminders);
     return maps.map((e) => ReminderModel.fromMap(e)).toList();
   }
 
   Future<void> updateReminder(ReminderModel reminder) async {
     final db = await database;
+    if (db == null) return;
     await db.update(
       AppConstants.tableReminders,
       reminder.toMap(),
@@ -255,6 +275,14 @@ class DatabaseHelper {
   // --- AI Messages CRUD ---
   Future<List<AIMessageModel>> getAIMessages() async {
     final db = await database;
+    if (db == null) {
+      return [
+        AIMessageModel(
+          text: 'Xin chào! Tôi là Trợ lý AI Giấc ngủ DCSleep. Tôi có thể hỗ trợ bạn tìm hiểu về vệ sinh giấc ngủ, gợi ý kỹ thuật thư giãn và điều chỉnh thói quen ngủ khoa học. Hãy đặt câu hỏi cho tôi nhé!',
+          isUser: false,
+        ),
+      ];
+    }
     final maps = await db.query(
       AppConstants.tableAIConversations,
       orderBy: 'timestamp ASC',
@@ -264,6 +292,7 @@ class DatabaseHelper {
 
   Future<int> insertAIMessage(AIMessageModel msg) async {
     final db = await database;
+    if (db == null) return 0;
     return await db.insert(AppConstants.tableAIConversations, msg.toMap());
   }
 }

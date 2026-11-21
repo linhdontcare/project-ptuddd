@@ -44,7 +44,7 @@ class SettingsScreen extends StatelessWidget {
                 title: Text(r.title, style: const TextStyle(fontSize: 14)),
                 subtitle: Text('Thời gian: ${TimeUtils.formatTime(r.hour, r.minute)}', style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
                 value: r.isEnabled,
-                activeColor: AppTheme.accentCyan,
+                activeThumbColor: AppTheme.accentCyan,
                 onChanged: (val) => settingsProv.toggleReminder(r, val),
               ),
             );
