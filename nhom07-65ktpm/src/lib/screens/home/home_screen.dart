@@ -91,7 +91,7 @@ class HomeScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.accentIndigo.withValues(alpha: 0.2),
+                    color: AppTheme.accentIndigo.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.bedtime_outlined, color: AppTheme.accentCyan, size: 24),
@@ -256,7 +256,7 @@ class HomeScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: record.isGoalMet ? AppTheme.softGreen.withValues(alpha: 0.2) : AppTheme.softRed.withValues(alpha: 0.2),
+                      color: record.isGoalMet ? AppTheme.softGreen.withOpacity(0.2) : AppTheme.softRed.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -323,3 +323,4 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
+

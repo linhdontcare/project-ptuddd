@@ -11,11 +11,7 @@ class AIAssistantProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   Future<void> loadMessages() async {
-    try {
-      _messages = await DatabaseHelper.instance.getAIMessages();
-    } catch (e) {
-      debugPrint('[AIAssistantProvider] SQLite loadMessages fallback: $e');
-    }
+    _messages = await DatabaseHelper.instance.getAIMessages();
     notifyListeners();
   }
 
@@ -44,3 +40,4 @@ class AIAssistantProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
+

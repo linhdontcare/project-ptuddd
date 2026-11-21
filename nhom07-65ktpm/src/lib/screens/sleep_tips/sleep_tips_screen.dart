@@ -52,7 +52,7 @@ class SleepTipsScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppTheme.accentIndigo.withValues(alpha: 0.2),
+                      color: AppTheme.accentIndigo.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -73,3 +73,4 @@ class SleepTipsScreen extends StatelessWidget {
     );
   }
 }
+

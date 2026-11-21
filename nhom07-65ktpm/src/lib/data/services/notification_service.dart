@@ -6,7 +6,6 @@ class NotificationService {
   NotificationService._init();
 
   bool _isPermissionGranted = true;
-  bool get isPermissionGranted => _isPermissionGranted;
 
   Future<void> initialize() async {
     // Ready for native local notifications plugin setup
@@ -31,3 +30,4 @@ class NotificationService {
     debugPrint('[NotificationService] Đã hủy toàn bộ lịch nhắc nhở.');
   }
 }
+

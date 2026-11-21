@@ -40,12 +40,8 @@ class SleepProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    try {
-      _goal = await DatabaseHelper.instance.getSleepGoal();
-      _records = await DatabaseHelper.instance.getSleepRecords();
-    } catch (e) {
-      debugPrint('[SleepProvider] SQLite loadData fallback: $e');
-    }
+    _goal = await DatabaseHelper.instance.getSleepGoal();
+    _records = await DatabaseHelper.instance.getSleepRecords();
 
     _isLoading = false;
     notifyListeners();
@@ -97,3 +93,4 @@ class SleepProvider extends ChangeNotifier {
     await loadData();
   }
 }
+

@@ -79,11 +79,7 @@ class NapProvider extends ChangeNotifier {
   }
 
   Future<void> loadHistory() async {
-    try {
-      _napHistory = await DatabaseHelper.instance.getNapRecords();
-    } catch (e) {
-      debugPrint('[NapProvider] SQLite loadHistory fallback: $e');
-    }
+    _napHistory = await DatabaseHelper.instance.getNapRecords();
     notifyListeners();
   }
 
@@ -93,3 +89,4 @@ class NapProvider extends ChangeNotifier {
     super.dispose();
   }
 }
+

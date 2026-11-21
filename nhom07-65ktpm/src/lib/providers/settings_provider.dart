@@ -4,7 +4,7 @@ import '../data/models/reminder_model.dart';
 import '../data/models/user_model.dart';
 
 class SettingsProvider extends ChangeNotifier {
-  final UserModel _user = UserModel(
+  UserModel _user = UserModel(
     name: 'Mã Khánh Linh',
     email: 'mkl.deeptry@gmail.com',
     studentId: '2351170602',
@@ -18,11 +18,7 @@ class SettingsProvider extends ChangeNotifier {
   bool get isDarkMode => _isDarkMode;
 
   Future<void> loadSettings() async {
-    try {
-      _reminders = await DatabaseHelper.instance.getReminders();
-    } catch (e) {
-      debugPrint('[SettingsProvider] SQLite loadSettings fallback: $e');
-    }
+    _reminders = await DatabaseHelper.instance.getReminders();
     notifyListeners();
   }
 
@@ -44,3 +40,4 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
+
