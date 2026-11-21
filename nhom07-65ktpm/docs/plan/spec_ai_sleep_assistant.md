@@ -5,7 +5,7 @@
 > **Giảng viên hướng dẫn:** ThS. Đỗ Oanh Cường  
 > **Lớp sinh hoạt:** 65KTPM – Nhóm 07  
 > **Sinh viên phụ trách:** **Dương Quốc Vượng** (Mã sinh viên: **2351170634** – Thành viên)  
-> **Phiên bản tài liệu:** 1.1 (Cập nhật chuẩn API Gemini 2.5, Bộ nhớ hội thoại & Cơ chế an toàn 2 lớp)  
+> **Phiên bản tài liệu:** 1.2 (Tối ưu hóa Thinking Budget Gemini 2.5, Schema SQLite is_offline & Đồng bộ luồng Offline UX)  
 > **Ngày cập nhật:** 21/11/2026  
 
 ---
@@ -17,13 +17,13 @@ Trong hệ thống DCSleep, người dùng (đặc biệt là sinh viên và ng�
 
 ### 1.2. Mục tiêu chức năng & Kỹ thuật
 1. Cung cấp giao diện trò chuyện dạng hội thoại trực quan (Chat UI) thân thiện, tích hợp chỉ báo trạng thái trực tuyến / ngoại tuyến rõ ràng.
-2. Tích hợp mô hình ngôn ngữ lớn thế hệ mới (**Google Gemini 2.5 Flash**) qua lớp dịch vụ (Service Layer) trừu tượng, sẵn sàng mở rộng cho OpenAI API.
+2. Tích hợp mô hình ngôn ngữ lớn thế hệ mới (**Google Gemini 2.5 Flash**) qua lớp dịch vụ (Service Layer) trừu tượng, tối ưu hóa thời gian phản hồi bằng việc tắt Thinking Budget khi không cần thiết, sẵn sàng mở rộng cho OpenAI API.
 3. **Bộ nhớ hội thoại đa lượt (Multi-turn Conversational Memory):** Duy trì ngữ cảnh trao đổi qua cơ chế cửa sổ trượt (Sliding Window 4–6 tin nhắn gần nhất) giúp AI hiểu được các câu hỏi nối tiếp của người dùng.
 4. **Kỹ thuật Prompt cá nhân hóa:** Tự động trích xuất dữ liệu nhật ký giấc ngủ (thời lượng ngủ, tỷ lệ tuân thủ) của người dùng để tiêm ngữ cảnh (Context Injection).
-5. **Khả năng chịu lỗi và chạy ngoại tuyến 100%:** Tích hợp bộ tri thức chuyên gia dự phòng (Offline Expert Knowledge Base) đảm bảo trải nghiệm liền mạch khi không có Internet.
+5. **Khả năng chịu lỗi và chạy ngoại tuyến 100%:** Tích hợp bộ tri thức chuyên gia dự phòng (`OfflineSleepEngine`) đảm bảo trải nghiệm liền mạch khi không có Internet hoặc khi gặp sự cố API.
 6. **Cơ chế an toàn 2 lớp (Two-Layer Safety Guardrails):** Bộ lọc cục bộ chặn tức thì (Local Pre-filter) kết hợp chỉ thị hệ thống nghiêm ngặt, từ chối tư vấn dược lý và nhận diện dấu hiệu nguy hiểm (Red Flags).
 7. **Bảo mật API Key:** Sử dụng cơ chế lưu trữ an toàn phần cứng (`flutter_secure_storage`) và truyền khóa qua HTTP Header thay vì URL Query Parameter.
-8. Lưu trữ dữ liệu lịch sử hội thoại vào cơ sở dữ liệu SQLite cục bộ.
+8. **Lưu trữ dữ liệu lịch sử hội thoại toàn vẹn:** Lưu vào SQLite cục bộ kèm cờ nguồn gốc tin nhắn (`is_offline`), đảm bảo tag `[Ngoại tuyến]` vẫn được hiển thị chính xác khi khởi động lại ứng dụng.
 
 ---
 
@@ -35,12 +35,18 @@ Trong hệ thống DCSleep, người dùng (đặc biệt là sinh viên và ng�
 ┌────────────────────────────────────────────────────────┐
 │                   AIAssistantScreen                    │
 └───────────────────────────┬────────────────────────────┘
-                            │ (Lắng nghe State)
+                            │ (Lắng nghe State & isOfflineMode)
 ┌───────────────────────────▼────────────────────────────┘
 │                  AIAssistantProvider                   │
-└───────────────────────────┬────────────────────────────┘
-                            │ (Gọi hàm trừu tượng với History)
-┌───────────────────────────▼────────────────────────────┘
+│   (Bắt lỗi API -> Kích hoạt Offline Engine & SQLite)    │
+└─────────────┬─────────────────────────────┬────────────┘
+              │                             │ (Fallback khi lỗi)
+              │ (Gọi API Online)            ▼
+              │                     ┌────────────────────┐
+              │                     │ OfflineSleepEngine │
+              │                     └────────────────────┘
+              ▼
+┌────────────────────────────────────────────────────────┐
 │                     «interface»                        │
 │                      AIService                         │
 │  + askAssistant(prompt, context, history): Future     │
@@ -50,15 +56,26 @@ Trong hệ thống DCSleep, người dùng (đặc biệt là sinh viên và ng�
 │       GeminiAIService        │ │        OpenAIService  │
 │  - Model: gemini-2.5-flash   │ │  - Model: gpt-4o-mini │
 │  - Header: x-goog-api-key    │ │  - REST Endpoint      │
+│  - thinkingBudget: 0         │ │                       │
 └──────────────────────────────┘ └───────────────────────┘
 ```
 
-### 2.1. Định nghĩa Interface chung (`ai_service.dart`)
-Bổ sung tham số danh sách lịch sử tin nhắn gần nhất (`history`) để hỗ trợ hội thoại nhiều lượt:
+### 2.1. Định nghĩa Interface và Mô hình phản hồi (`ai_service.dart`)
+Để tầng `Provider` phân biệt chính xác nguồn gốc câu trả lời và đồng bộ trạng thái giao diện:
 
 ```dart
+class AIResponse {
+  final String text;
+  final bool isOffline;
+
+  const AIResponse({
+    required this.text,
+    this.isOffline = false,
+  });
+}
+
 abstract class AIService {
-  Future<String> askAssistant({
+  Future<AIResponse> askAssistant({
     required String prompt,
     String? sleepContext,
     List<AIMessageModel> history = const [],
@@ -69,19 +86,23 @@ abstract class AIService {
 }
 ```
 
+*Cơ chế phân tách trách nhiệm (Separation of Concerns):*
+- `GeminiAIService`: Tập trung xử lý gọi mạng HTTP. Khi xảy ra sự cố (mất mạng, HTTP 429, 401/403, timeout), ném ra `AIServiceException`.
+- `AIAssistantProvider`: Bắt ngoại lệ `AIServiceException`, tự động chuyển trạng thái `isOfflineMode = true`, điều phối qua `OfflineSleepEngine` lấy câu trả lời dự phòng và lưu vào SQLite với `is_offline = 1`.
+
 ### 2.2. Triển khai Gemini Service (`gemini_ai_service.dart` - Mặc định)
 - **Endpoint chính thức:** `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`  
-  *(Áp dụng dòng mô hình **Gemini 2.5 Flash** thay thế cho dòng 1.5 đã ngừng hỗ trợ, đảm bảo tốc độ phản hồi nhanh và chi phí tối ưu).*
+  *(Áp dụng dòng mô hình **Gemini 2.5 Flash** thay thế cho dòng 1.5 đã ngừng phục vụ, đảm bảo tốc độ phản hồi nhanh và chi phí tối ưu).*
 - **Phương thức:** `POST`
-- **Bảo mật Header:** Truyền khóa API qua Header chuyên dụng `x-goog-api-key` để tránh lộ khóa trong URL:
+- **Bảo mật Header:** Truyền khóa API qua Header chuyên dụng `x-goog-api-key` để tránh lộ khóa trong URL query parameters:
   ```http
   POST /v1beta/models/gemini-2.5-flash:generateContent HTTP/1.1
   Host: generativelanguage.googleapis.com
   Content-Type: application/json
   x-goog-api-key: {SECURE_API_KEY}
   ```
-- **Cấu trúc Payload chuẩn chuẩn hóa (Dùng đúng trường `system_instruction`):**
-  Tách biệt chỉ thị hệ thống khỏi nội dung người dùng để triệt tiêu nguy cơ tấn công Prompt Injection:
+- **Cấu trúc Payload chuẩn hóa (Dùng đúng trường `system_instruction` & tắt Thinking Budget):**
+  Khác với dòng cũ, Gemini 2.5 Flash mặc định bật tính năng suy luận nội bộ (thinking). Với chatbot giấc ngủ ngắn gọn dưới 200 từ, việc suy luận làm tăng độ trễ và ngốn vào hạn mức token đầu ra. Vì vậy, ta cấu hình `thinkingBudget: 0` để API phản hồi dưới 1–2 giây:
   ```json
   {
     "system_instruction": {
@@ -108,7 +129,10 @@ abstract class AIService {
     "generationConfig": {
       "temperature": 0.7,
       "topP": 0.95,
-      "maxOutputTokens": 1024
+      "maxOutputTokens": 1024,
+      "thinkingConfig": {
+        "thinkingBudget": 0
+      }
     }
   }
   ```
@@ -187,6 +211,10 @@ Giao diện tại đường dẫn `src/lib/screens/ai_assistant/ai_assistant_scr
 │                     └────────────────────────────────┘ │
 │                                                        │
 │ ┌────────────────────────────────────────────────┐     │
+│ │ Bot: [Ngoại tuyến] Hãy thử kỹ thuật thở 4-7-8..│     │ <- Tag [Ngoại tuyến] bền vững từ SQLite
+│ └────────────────────────────────────────────────┘     │
+│                                                        │
+│ ┌────────────────────────────────────────────────┐     │
 │ │ Bot: [Đang phân tích thói quen...]             │     │ <- Typing Indicator
 │ └────────────────────────────────────────────────┘     │
 │                                                        │
@@ -199,8 +227,8 @@ Giao diện tại đường dẫn `src/lib/screens/ai_assistant/ai_assistant_scr
 
 ### 4.1. Các thành phần giao diện & Trạng thái UX
 1. **Thanh trạng thái Ngoại tuyến (Offline Mode Banner):**
-   - Khi phát hiện mất mạng hoặc đang chạy qua bộ cứu hộ cục bộ, một dải banner nhỏ màu vàng mờ xuất hiện dưới AppBar: *"Đang hoạt động ở chế độ ngoại tuyến (Tri thức cục bộ)"*.
-   - Trên mỗi bong bóng tin nhắn trả lời từ nguồn offline có gắn tag nhỏ `[Ngoại tuyến]` để đảm bảo tính minh bạch tuyệt đối với người dùng.
+   - Khi `isOfflineMode == true` (do mất mạng, lỗi API hoặc không có key), một dải banner màu vàng mờ xuất hiện ngay dưới AppBar: *"⚠️ Đang hoạt động ở chế độ ngoại tuyến (Tri thức cục bộ)"*.
+   - Trên mỗi bong bóng tin nhắn trả lời từ nguồn offline có gắn tag nhỏ `[Ngoại tuyến]` (được lưu bền vững trong trường `is_offline` của SQLite) để đảm bảo tính minh bạch tuyệt đối với người dùng ngay cả khi mở lại ứng dụng.
 2. **Thanh gợi ý nhanh (Suggested Prompt Chips):**
    - Danh sách cuộn ngang gồm 4 câu hỏi mẫu thông dụng giúp người dùng bắt đầu nhanh mà không cần gõ phím.
 3. **Danh sách tin nhắn (Chat Message List):**
@@ -220,12 +248,12 @@ Giao diện tại đường dẫn `src/lib/screens/ai_assistant/ai_assistant_scr
 
 | Mã lỗi / Tình huống | Nguyên nhân | Phương án xử lý tự động của hệ thống |
 | :--- | :--- | :--- |
-| **Mất kết nối Internet** (`SocketException`) | Thiết bị offline, máy bay, mất Wi-Fi/4G | Hiển thị Banner ngoại tuyến; tự động chuyển sang **Hệ tri thức chuyên gia ngoại tuyến (Offline Knowledge Base)** phân tích từ khóa và trả lời tức thì mà không báo lỗi kỹ thuật. |
-| **Hết hạn mức API (HTTP 429)** | Tài khoản Gemini chạm ngưỡng giới hạn | Hiển thị Banner thông báo: *"Dịch vụ trực tuyến đang bận, DCSleep chuyển sang chế độ tư vấn ngoại tuyến"* và trả lời qua bộ tri thức offline. |
-| **API Key không hợp lệ (HTTP 401/403)** | Key nhập sai hoặc bị thu hồi | Chuyển tiếp sang bộ tri thức offline và thông báo người dùng kiểm tra API Key trong mục Cài đặt. |
-| **Quá thời gian chờ (Timeout > 10s)** | Mạng chập chờn, máy chủ LLM phản hồi chậm | Tự động hủy request và phản hồi thông tin từ tri thức offline. |
+| **Mất kết nối Internet** (`SocketException`) | Thiết bị offline, máy bay, mất Wi-Fi/4G | Bật cờ `isOfflineMode = true`, hiển thị Banner ngoại tuyến; tự động chuyển sang **Hệ tri thức chuyên gia ngoại tuyến (`OfflineSleepEngine`)** phân tích từ khóa và trả lời tức thì, lưu `is_offline = 1`. |
+| **Hết hạn mức API (HTTP 429)** | Tài khoản Gemini chạm ngưỡng giới hạn | Bật `isOfflineMode = true`, thông báo: *"Dịch vụ trực tuyến đang bận, DCSleep chuyển sang chế độ tư vấn ngoại tuyến"* và trả lời qua bộ tri thức offline. |
+| **API Key không hợp lệ (HTTP 401/403)** | Key nhập sai hoặc bị thu hồi | Chuyển tiếp sang bộ tri thức offline, bật Banner ngoại tuyến và thông báo người dùng kiểm tra API Key trong mục Cài đặt. |
+| **Quá thời gian chờ (Timeout > 10s)** | Mạng chập chờn, máy chủ LLM phản hồi chậm | Tự động hủy request, bật Banner ngoại tuyến và phản hồi thông tin từ tri thức offline. |
 
-### 5.2. Hệ tri thức chuyên gia ngoại tuyến (Rule-based Offline Engine)
+### 5.2. Hệ tri thức chuyên gia ngoại tuyến (`OfflineSleepEngine`)
 Cung cấp sẵn các nhánh câu trả lời chuyên sâu chuẩn khoa học y tế:
 - **Kỹ thuật thở 4-7-8 & Giãn cơ:** Đầy đủ các bước đếm nhịp hít vào (4s), nín thở (7s), thở ra (8s).
 - **Giấc ngủ trưa (Power Nap):** Cảnh báo quán tính giấc ngủ nếu ngủ quá 30 phút, khuyến nghị 15-20 phút.
@@ -239,18 +267,21 @@ Cung cấp sẵn các nhánh câu trả lời chuyên sâu chuẩn khoa học y 
 Lịch sử trò chuyện được lưu trữ bền vững tại cơ sở dữ liệu SQLite cục bộ (`dcsleep.db`) thông qua tệp mã nguồn `src/lib/data/database/database_helper.dart`.
 
 ### 6.1. Cấu trúc bảng `ai_chat_messages`
+Bổ sung cột `is_offline` để lưu trữ nguồn gốc tin nhắn, đảm bảo tag `[Ngoại tuyến]` không bị mất khi khởi động lại app:
+
 ```sql
 CREATE TABLE ai_chat_messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     text TEXT NOT NULL,
-    is_user INTEGER NOT NULL,          -- 1: Tin nhắn người dùng, 0: Tin nhắn AI
-    timestamp TEXT NOT NULL            -- Định dạng ISO-8601 (YYYY-MM-DDTHH:mm:ss)
+    is_user INTEGER NOT NULL,              -- 1: Người dùng, 0: AI
+    is_offline INTEGER NOT NULL DEFAULT 0, -- 1: Phản hồi từ tri thức offline, 0: AI trực tuyến
+    timestamp TEXT NOT NULL                -- Định dạng ISO-8601 (YYYY-MM-DDTHH:mm:ss)
 );
 ```
 
 ### 6.2. Các thao tác dữ liệu (Data Access Object)
-- `insertMessage(AIMessageModel message)`: Lưu tin nhắn mới vào CSDL.
-- `getAllMessages()`: Lấy toàn bộ tin nhắn sắp xếp theo thứ tự `timestamp ASC` để nạp vào màn hình.
+- `insertMessage(AIMessageModel message)`: Lưu tin nhắn mới vào CSDL (kèm giá trị `is_offline`).
+- `getAllMessages()`: Lấy toàn bộ tin nhắn sắp xếp theo thứ tự `timestamp ASC` để nạp vào màn hình, ánh xạ chính xác thuộc tính `isOffline` vào model `AIMessageModel`.
 - `clearAllMessages()`: Xóa sạch toàn bộ lịch sử khi người dùng nhấn nút "Xóa lịch sử" trên AppBar.
 
 ---
@@ -296,15 +327,15 @@ Chạy ngay trên thiết bị trước khi gửi request tới API hoặc Offli
 ## 8. TIÊU CHÍ NGHIỆM THU (ACCEPTANCE CRITERIA)
 
 | STT | Hạng mục kiểm tra | Tiêu chí đạt (Pass Criteria) | Trạng thái |
-| :-: | :--- | :--- | :---: |
+| :-: | :--- | :--- | :-: |
 | 1 | Khởi chạy giao diện | Màn hình `AIAssistantScreen` tải mượt mà, hiển thị đúng theme màu Dark Navy & Cyan của dự án. | Chưa kiểm thử |
 | 2 | Gửi nhận tin nhắn | Nhập nội dung và nhấn gửi; tin nhắn người dùng hiển thị bên phải, tin nhắn bot hiển thị bên trái. | Chưa kiểm thử |
-| 3 | Tích hợp Gemini 2.5 Flash | Kết nối API thành công qua header `x-goog-api-key`, nhận phản hồi chính xác và câu trả lời hoàn chỉnh (< 1024 tokens). | Chưa kiểm thử |
+| 3 | Tích hợp Gemini 2.5 Flash | Kết nối API thành công qua header `x-goog-api-key`, cấu hình `thinkingBudget: 0`, nhận phản hồi nhanh (< 2s) và không đứt câu (< 1024 tokens). | Chưa kiểm thử |
 | 4 | Bộ nhớ hội thoại đa lượt | Hỏi câu nối tiếp (ví dụ: "cách thứ 2 làm thế nào?"), AI nhận diện đúng ngữ cảnh câu trước dựa trên sliding window 4–6 tin nhắn. | Chưa kiểm thử |
-| 5 | Dự phòng ngoại tuyến & UX | Khi ngắt mạng, hệ thống tự động phản hồi từ bộ tri thức offline và hiển thị dải thông báo chế độ ngoại tuyến rõ ràng. | Chưa kiểm thử |
+| 5 | Dự phòng ngoại tuyến & UX | Khi ngắt mạng, hệ thống tự động phản hồi từ `OfflineSleepEngine`, hiển thị banner ngoại tuyến và tag `[Ngoại tuyến]` rõ ràng. | Chưa kiểm thử |
 | 6 | Cơ chế an toàn 2 lớp | Hỏi về tên thuốc ngủ hoặc triệu chứng ngưng thở, Local Pre-filter chặn ngay lập tức và đưa ra cảnh báo y tế chuẩn. | Chưa kiểm thử |
-| 7 | Lưu trữ SQLite bền vững | Thoát ứng dụng và mở lại, toàn bộ tin nhắn đã gửi trước đó vẫn được khôi phục đầy đủ; nút "Xóa lịch sử" hoạt động chính xác. | Chưa kiểm thử |
-| 8 | Bảo mật khóa API | Khóa API không bị hardcode trong mã nguồn, không lộ trên URL query string và được lưu trữ an toàn khi người dùng cấu hình tùy chỉnh. | Chưa kiểm thử |
+| 7 | Lưu trữ SQLite bền vững | Thoát ứng dụng và mở lại, toàn bộ tin nhắn đã gửi trước đó vẫn được khôi phục đầy đủ kèm cờ `is_offline`; nút "Xóa lịch sử" hoạt động chính xác. | Chưa kiểm thử |
+| 8 | Bảo mật khóa API | Khóa API không bị hardcode trong mã nguồn, không lộ trên URL query string và được lưu trữ an toàn qua `flutter_secure_storage`. | Chưa kiểm thử |
 
 ---
 *Tài liệu đặc tả kỹ thuật này là căn cứ chính thức để triển khai, kiểm thử và nghiệm thu đồ án môn học cho thành viên Dương Quốc Vượng.*
