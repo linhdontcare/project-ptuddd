@@ -10,7 +10,7 @@
 | :---: | :--- | :---: | :---: | :---: | :--- | :---: | :--- |
 | 1 | Mã Khánh Linh | 2351170602 | 65KTPM | Trưởng nhóm | Giao diện, tài khoản và hồ sơ, Điều phối nhóm | 100% | mkl.deeptry@gmail.com |
 | 2 | Vũ Bá Đài | 2351170577 | 65KTPM | Thành viên | Lịch ngủ, nhắc nhở thông báo và Power Nap | 100% | [email_thanh_vien] |
-| 3 | Dương Quốc Vượng | 2351170634 | 65KTPM | Thành viên | AI Sleep Assistant (Gemini API) & Chat UI | 100% | [email_thanh_vien] |
+| 3 | Dương Quốc Vượng | 2351170634 | 65KTPM | Thành viên | AI Sleep Assistant (Gemini API) & Chat UI | 100% | funnyvuong@gmail.com |
 | 4 | Lê Văn Dân | 2251161963 | 65KTPM | Thành viên | Nhật ký giấc ngủ, Thống kê biểu đồ & Dữ liệu | 100% | [email_thanh_vien] |
 
 ## Hướng Dẫn Cài Đặt & Khởi Chạy Ứng Dụng
