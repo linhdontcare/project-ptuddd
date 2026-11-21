@@ -1,14 +1,14 @@
-# Kế Hoạch Triển Khai Phân Hệ AI Sleep Assistant (DCSleep) - v1.4
+# Kế Hoạch Triển Khai Phân Hệ AI Sleep Assistant (DCSleep) - v1.5
 
 > **Dành cho Agent/Kỹ sư triển khai:** BẮT BUỘC SỬ DỤNG SUB-SKILL: Sử dụng `superpowers:subagent-driven-development` (khuyên dùng) hoặc `superpowers:executing-plans` để thực thi kế hoạch này từng tác vụ một. Các bước sử dụng cú pháp checkbox (`- [ ]`) để theo dõi tiến độ.
 
-**Mục tiêu:** Xây dựng hoàn chỉnh phân hệ Trợ lý AI Tư vấn Giấc ngủ (AI Sleep Assistant) theo bản đặc tả v1.3, tích hợp Gemini 2.5 Flash, quản lý khóa an toàn qua `flutter_secure_storage`, bộ lọc an toàn 2 lớp hỗ trợ tiếng Việt không dấu, cơ chế tự phục hồi ngoại tuyến và lưu trữ SQLite bền vững.
+**Mục tiêu:** Xây dựng hoàn chỉnh phân hệ Trợ lý AI Tư vấn Giấc ngủ (AI Sleep Assistant) theo bản đặc tả v1.3, tích hợp Gemini 2.5 Flash (hỗ trợ MockClient & khử trùng role tuyệt đối), quản lý khóa an toàn qua `flutter_secure_storage` (kèm dialog demo trực tiếp), bộ lọc an toàn 2 lớp hỗ trợ tiếng Việt không dấu, cơ chế tự phục hồi ngoại tuyến và lưu trữ SQLite bền vững (hỗ trợ in-memory test).
 
 **Phạm vi triển khai (Scope Clarification):** Đợt triển khai này tập trung 100% vào việc hoàn thiện và tối ưu `GeminiAIService` (Gemini 2.5 Flash) cùng bộ dự phòng `OfflineSleepEngine`. Phân hệ `OpenAIService` (Mục 2.3 của spec) nằm ngoài phạm vi thực thi đợt này, đã được mở sẵn cổng chờ kết nối thông qua interface `AIService`.
 
 **Kiến trúc:** Áp dụng Strategy Pattern và Dependency Injection (DI) cho Service Layer (`AIService`), tách biệt hoàn toàn khỏi `AIAssistantProvider`. Dữ liệu được bảo vệ 2 tầng qua `SafetyGuardrails` (chạy trên máy) và `OfflineSleepEngine` (khi mạng lỗi). Khóa API được quản lý tập trung bởi `ApiKeyManager`. Toàn bộ lịch sử chat được lưu trữ bền vững trong SQLite cục bộ (`database_helper.dart`).
 
-**Công nghệ sử dụng:** Flutter 3.x, Dart 3.x, `provider`, `sqflite`, `sqflite_common_ffi` (cho unit test trên máy tính), `http`, `flutter_secure_storage`.
+**Công nghệ sử dụng:** Flutter 3.x, Dart 3.x, `provider`, `sqflite`, `sqflite_common_ffi` (dùng `inMemoryDatabasePath` cho unit test), `http` (kèm `MockClient` test), `flutter_secure_storage`.
 
 **Tài liệu đặc tả (Spec):** [spec_ai_sleep_assistant.md](file:///d:/Nhom_mobile/project-ptuddd/nhom07-65ktpm/docs/spec/spec_ai_sleep_assistant.md)
 
@@ -19,44 +19,47 @@
 - **Mô hình AI:** Bắt buộc sử dụng `gemini-2.5-flash` (không dùng dòng 1.5 đã ngừng phục vụ).
 - **Cấu hình Payload:** `thinkingBudget: 0`, `temperature: 0.7`, `maxOutputTokens: 1024`.
 - **Thời gian chờ (Timeout):** Gắn cứng `.timeout(const Duration(seconds: 10))` cho mọi request HTTP gọi API trực tuyến.
-- **Bảo mật Header:** Truyền khóa API qua Header `x-goog-api-key`, tuyệt đối không truyền qua URL query parameter `?key=...`.
-- **Cửa sổ trượt (Sliding Window):** Tối đa 6 tin nhắn gần nhất; tin đầu tiên trong `contents` luôn là `user`; bắt buộc xen kẽ nghiêm ngặt `user` $\leftrightarrow$ `model`.
-- **Ngữ cảnh giấc ngủ:** `[DỮ LIỆU THỰC TẾ TỪ DCSLEEP]` chỉ ghép động vào `system_instruction` của HTTP payload, tuyệt đối không lưu vào bảng `ai_chat_messages` trong SQLite.
-- **Dependency Injection:** `AIAssistantProvider` không gọi cứng `DatabaseHelper.instance` hay `GeminiAIService.instance` mà nhận qua constructor (có default value) để đảm bảo unit test mock 100%.
+- **Bảo mật Header & Mockability:** Truyền khóa API qua Header `x-goog-api-key`, tuyệt đối không truyền `?key=...` trên URL. `GeminiAIService` nhận `http.Client?` qua constructor để test bằng `MockClient`.
+- **Khử trùng Role an toàn:** Nối `currentPrompt` trước khi chuẩn hóa; đảm bảo mảng `contents` cuối cùng luôn bắt đầu bằng `user`, kết thúc bằng `user` và xen kẽ nghiêm ngặt `user` $\leftrightarrow$ `model`.
+- **Chống gửi trùng (Debounce):** Chặn sớm `if (_isThinking || prompt.trim().isEmpty) return;` ở đầu `sendMessage()`.
+- **Ngữ cảnh giấc ngủ:** `[DỮ LIỆU THỰC TẾ TỪ DCSLEEP]` chỉ ghép động vào `system_instruction` của HTTP payload, tuyệt đối không lưu vào bảng `ai_chat_messages` trong SQLite. Đọc đúng các thuộc tính thực tế của `SleepProvider` (`goal.targetDurationHours`, `complianceRate`, `averageDurationHours`, `latestRecord`).
+- **Chuẩn hóa Màu sắc Flutter 3.x:** Sử dụng `.withValues(alpha: 0.3)` thay vì phương thức đã deprecated `.withOpacity(0.3)`.
+- **Cô lập kiểm thử CSDL:** `DatabaseHelper` hỗ trợ `inMemoryDatabasePath` cho unit test để không sinh file `dcsleep.db` rác và tránh ô nhiễm dữ liệu giữa các test cases.
 - **Tiêu chuẩn mã nguồn:** Không có cảnh báo/lỗi trên `flutter analyze`, toàn bộ code nằm trọn vẹn trong `nhom07-65ktpm/src/`.
 
 ---
 
 ## Trọng Tâm Rà Soát (Review Focus)
 
-1. **Chuỗi role không hợp lệ & Trùng lặp tin nhắn cuối:** Nếu snapshot lịch sử chat sau khi thêm tin nhắn mới của user, mảng `contents` sẽ chứa 2 tin `user` liên tiếp ở cuối $\rightarrow$ API bắn lỗi `400 Bad Request`. Khắc phục: Snapshot `previousHistory` trước khi add tin nhắn mới, kèm bước sanitize role trong `buildContentsPayload`.
-2. **Crash `MissingPluginException` khi chạy test SQLite trên máy tính:** Khi chạy `flutter test`, `sqflite` thiếu platform channel của Android/iOS. Khắc phục: Sử dụng `sqflite_common_ffi` (`sqfliteFfiInit(); databaseFactory = databaseFactoryFfi;`) trong `setUpAll`.
-3. **Gắn nhầm nhãn `[Ngoại tuyến]` cho cảnh báo y tế:** Phản hồi từ `SafetyGuardrails` là cơ chế an toàn chủ động, điện thoại vẫn có mạng bình thường. Khắc phục: Chỉ gán `isOffline: true` khi câu trả lời thực sự do `OfflineSleepEngine` sinh ra.
-4. **Bỏ dấu tiếng Việt trong từ khóa cấm:** Người dùng gõ `thuoc ngu`, `ngung tho khi ngu` viết thường không dấu hoặc viết hoa phải được phát hiện 100% bởi `SafetyGuardrails`.
-5. **Độ trễ và Banner treo khi mạng phục hồi:** Mạng chập chờn $\rightarrow$ hiển thị banner kèm đúng nguyên nhân (`_offlineReason`); khi mạng có lại và gửi thành công $\rightarrow$ tự động ẩn banner (`_isOfflineMode = false`).
+1. **Thứ tự khử trùng role trong `buildContentsPayload`:** Nếu lọc history trước rồi mới nối `currentPrompt`, gặp history kết thúc bằng `user` sẽ gây lỗi 2 tin `user` liên tiếp $\rightarrow$ API bắn lỗi `400 Bad Request`. Khắc phục: Nối `currentPrompt` trước, sau đó chạy một lượt khử trùng lặp các role đứng liền nhau.
+2. **Crash `MissingPluginException` và file DB rác khi chạy test trên máy tính:** Khi chạy `flutter test`, `sqflite` thiếu platform channel. Khắc phục: Sử dụng `sqflite_common_ffi` kết hợp `inMemoryDatabasePath` (`sqfliteFfiInit(); databaseFactory = databaseFactoryFfi;`) trong `setUpAll`.
+3. **Bấm gửi liên tục (Double-tap spam):** Người dùng bấm gửi 2 lần nhanh $\rightarrow$ phát sinh 2 lời gọi bất đồng bộ đè nhau. Khắc phục: `if (_isThinking || prompt.trim().isEmpty) return;` ở đầu hàm `sendMessage`.
+4. **Gắn nhầm nhãn `[Ngoại tuyến]` cho cảnh báo y tế:** Phản hồi từ `SafetyGuardrails` là cơ chế an toàn chủ động, điện thoại vẫn có mạng bình thường. Khắc phục: Chỉ gán `isOffline: true` khi câu trả lời thực sự do `OfflineSleepEngine` sinh ra.
+5. **Cảnh báo Deprecated trên Flutter mới:** Dùng `.withOpacity(...)` gây warning khi chạy `flutter analyze`. Khắc phục: Thay bằng `.withValues(alpha: ...)`.
 
 ---
 
 ## Danh Sách Tác Vụ Triển Khai (Tasks)
 
-### Tác Vụ 1: Bổ Sung Dependencies, Nâng Cấp Model & Migration SQLite FFI
+### Tác Vụ 1: Bổ Sung Dependencies, Nâng Cấp Model & CSDL Hỗ Trợ In-Memory Test
 
 **Tệp tin:**
 - Sửa đổi: `nhom07-65ktpm/src/pubspec.yaml`
 - Sửa đổi: `nhom07-65ktpm/src/lib/data/models/ai_message_model.dart`
 - Sửa đổi: `nhom07-65ktpm/src/lib/data/database/database_helper.dart`
 - Kiểm thử: `nhom07-65ktpm/src/test/ai_message_model_test.dart`
+- Kiểm thử: `nhom07-65ktpm/src/test/database_helper_test.dart`
 
 **Giao diện kết nối:**
 - Tiêu thụ: `sqflite`, `sqflite_common_ffi`, `flutter_secure_storage`.
-- Cung cấp: `AIMessageModel` có thuộc tính `isOffline: bool`; `DatabaseHelper` hỗ trợ lưu và truy vấn cờ `is_offline`, cho phép tiêm database/factory phục vụ unit test.
+- Cung cấp: `AIMessageModel` có thuộc tính `isOffline: bool`; `DatabaseHelper` hỗ trợ lưu/truy vấn `is_offline`, hàm `@visibleForTesting initCustomDatabase({String? path})` và `closeDatabase()`.
 
 - [ ] **Bước 1: Bổ sung dependencies vào `pubspec.yaml`**
   - Thêm `flutter_secure_storage: ^9.2.2` vào mục `dependencies:`.
   - Thêm `sqflite_common_ffi: ^2.3.4+4` vào mục `dev_dependencies:`.
   - Chạy: `flutter pub get`.
 
-- [ ] **Bước 2: Viết test kiểm tra serialization của `AIMessageModel`**
+- [ ] **Bước 2: Viết test kiểm tra serialization của `AIMessageModel` & CSDL In-Memory**
   ```dart
   // nhom07-65ktpm/src/test/ai_message_model_test.dart
   import 'package:flutter_test/flutter_test.dart';
@@ -78,31 +81,77 @@
     });
   }
   ```
+  ```dart
+  // nhom07-65ktpm/src/test/database_helper_test.dart
+  import 'package:flutter_test/flutter_test.dart';
+  import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+  import 'package:dcsleep/data/database/database_helper.dart';
+  import 'package:dcsleep/data/models/ai_message_model.dart';
+
+  void main() {
+    setUpAll(() {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    });
+
+    tearDown(() async {
+      await DatabaseHelper.instance.closeDatabase();
+    });
+
+    test('DatabaseHelper saves and retrieves is_offline flag using in-memory db', () async {
+      await DatabaseHelper.instance.initCustomDatabase(path: inMemoryDatabasePath);
+      final msg = AIMessageModel(
+        text: 'Offline test',
+        isUser: false,
+        isOffline: true,
+        timestamp: DateTime.now(),
+      );
+      final id = await DatabaseHelper.instance.insertAIMessage(msg);
+      final messages = await DatabaseHelper.instance.getAllAIMessages();
+      expect(messages.any((m) => m.id == id && m.isOffline == true), true);
+    });
+  }
+  ```
 
 - [ ] **Bước 3: Cập nhật `AIMessageModel`**
   - Thêm thuộc tính `final bool isOffline;` với giá trị mặc định `false`.
   - Cập nhật hàm `toMap()` ghi `is_offline: isOffline ? 1 : 0`.
   - Cập nhật hàm `fromMap()` đọc `isOffline: (map['is_offline'] as int?) == 1`.
 
-- [ ] **Bước 4: Cập nhật `DatabaseHelper` với Migration an toàn và hỗ trợ FFI**
+- [ ] **Bước 4: Cập nhật `DatabaseHelper` với Migration an toàn và hỗ trợ In-Memory Path**
   - Nâng `_databaseVersion` lên `2`.
-  - Bổ sung `is_offline INTEGER NOT NULL DEFAULT 0` vào câu lệnh `CREATE TABLE ai_chat_messages`.
-  - Trong `_onUpgrade(db, oldVersion, newVersion)`, thêm:
+  - Thêm hỗ trợ biến `String? _customPath;`.
+  - Cung cấp hàm:
     ```dart
-    if (oldVersion < 2) {
-      await db.execute('ALTER TABLE ai_chat_messages ADD COLUMN is_offline INTEGER NOT NULL DEFAULT 0;');
+    @visibleForTesting
+    Future<Database> initCustomDatabase({String? path}) async {
+      _customPath = path;
+      _database = await _initDatabase();
+      return _database!;
+    }
+
+    @visibleForTesting
+    Future<void> closeDatabase() async {
+      if (_database != null && _database!.isOpen) {
+        await _database!.close();
+      }
+      _database = null;
+      _customPath = null;
     }
     ```
-  - Cập nhật hàm `insertAIMessage`, `getAllAIMessages` để lưu/đọc chính xác trường `is_offline`.
+  - Trong `_initDatabase()`: nếu `_customPath != null`, mở trực tiếp `openDatabase(_customPath!, ...)`; nếu không thì dùng `getDatabasesPath()`.
+  - Bổ sung `is_offline INTEGER NOT NULL DEFAULT 0` vào câu lệnh `CREATE TABLE ai_chat_messages`.
+  - Trong `_onUpgrade(db, oldVersion, newVersion)`, thêm lệnh `ALTER TABLE ai_chat_messages ADD COLUMN is_offline INTEGER NOT NULL DEFAULT 0;` khi `oldVersion < 2`.
+  - Cập nhật `insertAIMessage`, `getAllAIMessages` và thêm `clearAllAIMessages()`.
 
 - [ ] **Bước 5: Chạy test xác nhận vượt qua**
-  - Chạy: `flutter test test/ai_message_model_test.dart`
+  - Chạy: `flutter test test/ai_message_model_test.dart test/database_helper_test.dart`
   - Kết quả mong đợi: PASS.
 
 - [ ] **Bước 6: Commit**
   ```bash
-  git add nhom07-65ktpm/src/pubspec.yaml nhom07-65ktpm/src/pubspec.lock nhom07-65ktpm/src/lib/data/models/ai_message_model.dart nhom07-65ktpm/src/lib/data/database/database_helper.dart nhom07-65ktpm/src/test/ai_message_model_test.dart
-  git commit -m "feat(nhom07-65ktpm): bo sung dependencies, cot is_offline model va migration sqlite"
+  git add nhom07-65ktpm/src/pubspec.yaml nhom07-65ktpm/src/pubspec.lock nhom07-65ktpm/src/lib/data/models/ai_message_model.dart nhom07-65ktpm/src/lib/data/database/database_helper.dart nhom07-65ktpm/src/test/ai_message_model_test.dart nhom07-65ktpm/src/test/database_helper_test.dart
+  git commit -m "feat(nhom07-65ktpm): nang cap ai_message_model, migration sqlite ho tro in-memory test"
   ```
 
 ---
@@ -218,13 +267,15 @@
   ```dart
   // nhom07-65ktpm/src/test/api_key_manager_test.dart
   import 'package:flutter_test/flutter_test.dart';
+  import 'package:flutter_secure_storage/flutter_secure_storage.dart';
   import 'package:dcsleep/data/services/api_key_manager.dart';
 
   void main() {
     test('ApiKeyManager fallback to environment key when storage is empty', () async {
-      final manager = ApiKeyManager(mockStorage: mockEmptyStorage);
+      FlutterSecureStorage.setMockInitialValues({});
+      final manager = ApiKeyManager();
       final key = await manager.getApiKey();
-      expect(key, isNotNull); // đọc từ const String.fromEnvironment
+      expect(key, isA<String>());
     });
   }
   ```
@@ -249,7 +300,7 @@
 
 ---
 
-### Tác Vụ 5: Tầng Dịch Vụ AI Trực Tuyến & Chuẩn Hóa Role Gemini API
+### Tác Vụ 5: Tầng Dịch Vụ AI Trực Tuyến, MockClient & Khử Trùng Role An Toàn
 
 **Tệp tin:**
 - Tạo mới: `nhom07-65ktpm/src/lib/data/services/ai_service.dart`
@@ -257,39 +308,60 @@
 - Kiểm thử: `nhom07-65ktpm/src/test/gemini_ai_service_test.dart`
 
 **Giao diện kết nối:**
-- Tiêu thụ: Model Gemini 2.5 Flash, API Key, lịch sử tin nhắn gần nhất (`history`).
-- Cung cấp: Interface `AIService`, ngoại lệ `AIServiceException`, và lớp `GeminiAIService`.
+- Tiêu thụ: Model Gemini 2.5 Flash, API Key, lịch sử tin nhắn gần nhất (`history`), `http.Client?`.
+- Cung cấp: Interface `AIService`, ngoại lệ `AIServiceException`, và lớp `GeminiAIService` có khả năng inject `MockClient`.
 
-- [ ] **Bước 1: Viết test cho thuật toán chuẩn hóa Sliding Window & Timeout 10s**
+- [ ] **Bước 1: Viết test cho MockClient HTTP Header `x-goog-api-key` và Khử trùng lặp Role**
   ```dart
   // nhom07-65ktpm/src/test/gemini_ai_service_test.dart
+  import 'dart:convert';
   import 'package:flutter_test/flutter_test.dart';
+  import 'package:http/http.dart' as http;
+  import 'package:http/testing.dart';
   import 'package:dcsleep/data/services/gemini_ai_service.dart';
+  import 'package:dcsleep/data/services/ai_service.dart';
   import 'package:dcsleep/data/models/ai_message_model.dart';
 
   void main() {
-    test('GeminiAIService cleans history: starts with user and alternates strictly', () {
+    test('GeminiAIService transmits API key in x-goog-api-key header and NOT in URL query', () async {
+      late Uri capturedUri;
+      late Map<String, String> capturedHeaders;
+
+      final mockClient = MockClient((request) async {
+        capturedUri = request.url;
+        capturedHeaders = request.headers;
+        return http.Response(jsonEncode({
+          'candidates': [
+            {'content': {'parts': [{'text': 'Test response'}]}}
+          ]
+        }), 200);
+      });
+
+      final service = GeminiAIService(client: mockClient);
+      service.setApiKey('test_secret_key');
+      final res = await service.askAssistant(prompt: 'Hello');
+
+      expect(res, 'Test response');
+      expect(capturedUri.queryParameters.containsKey('key'), false); // Không lộ trên URL!
+      expect(capturedHeaders['x-goog-api-key'], 'test_secret_key');
+    });
+
+    test('GeminiAIService buildContentsPayload ensures strict user-model-user alternation even with trailing user in history', () {
+      final service = GeminiAIService();
       final history = [
         AIMessageModel(id: 1, text: 'Hi', isUser: false, timestamp: DateTime.now()), // bot chào
-        AIMessageModel(id: 2, text: 'Kho khó ngủ', isUser: true, timestamp: DateTime.now()),
-        AIMessageModel(id: 3, text: 'Bạn thử thở 478', isUser: false, timestamp: DateTime.now()),
+        AIMessageModel(id: 2, text: 'Tôi mệt', isUser: true, timestamp: DateTime.now()),
+        AIMessageModel(id: 3, text: 'Lại gửi tiếp', isUser: true, timestamp: DateTime.now()), // 2 user liền nhau!
       ];
-      final contents = GeminiAIService.instance.buildContentsPayload(
+      final contents = service.buildContentsPayload(
         history: history,
-        currentPrompt: 'Thở thế nào?',
+        currentPrompt: 'Câu hỏi mới của tôi',
       );
       expect(contents.first['role'], 'user');
       expect(contents.last['role'], 'user');
       for (int i = 0; i < contents.length - 1; i++) {
         expect(contents[i]['role'], isNot(equals(contents[i + 1]['role'])));
       }
-    });
-    test('GeminiAIService throws AIServiceException when apiKey is empty', () async {
-      GeminiAIService.instance.setApiKey('');
-      expect(
-        () => GeminiAIService.instance.askAssistant(prompt: 'Test'),
-        throwsA(isA<AIServiceException>()),
-      );
     });
   }
   ```
@@ -299,19 +371,27 @@
   - Khai báo abstract class `AIService` với hàm `askAssistant({prompt, sleepContext, history}) -> Future<String>`.
 
 - [ ] **Bước 3: Cập nhật `GeminiAIService`**
-  - Triển khai `implements AIService`.
-  - Sử dụng endpoint `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`.
+  - Nhận `http.Client? client` qua constructor:
+    ```dart
+    class GeminiAIService implements AIService {
+      static final GeminiAIService instance = GeminiAIService();
+      final http.Client _client;
+      String _apiKey = '';
+
+      GeminiAIService({http.Client? client}) : _client = client ?? http.Client();
+    ```
   - Kiểm tra sớm: `if (!hasApiKey) throw AIServiceException('Chưa cấu hình API Key');`.
-  - Gắn Header `x-goog-api-key: _apiKey` (tuyệt đối không truyền `?key=` trên URL).
+  - Header: `headers: {'Content-Type': 'application/json', 'x-goog-api-key': _apiKey}`.
   - Cấu hình `"generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024, "thinkingConfig": {"thinkingBudget": 0}}`.
   - Cấu hình trường `"system_instruction"` tách biệt (ghép kèm ngữ cảnh `sleepContext` nếu có).
   - Cài đặt `buildContentsPayload`:
-    1. Cắt tối đa 6 tin từ `history`.
-    2. Bỏ tin nhắn chào mở đầu (nếu là `model`).
-    3. Khử trùng lặp: nếu 2 tin cùng role liên tiếp, chỉ giữ tin mới nhất.
-    4. Thêm tin nhắn hiện tại `{"role": "user", "parts": [{"text": currentPrompt}]}` vào cuối.
-  - Gọi HTTP với `.timeout(const Duration(seconds: 10))`.
-  - Xử lý mã phản hồi: nếu $\neq 200$, ném `AIServiceException` với mã lỗi tương ứng.
+    1. Nạp các tin nhắn cũ từ `history` vào danh sách tạm.
+    2. Nối câu hỏi hiện tại `{"role": "user", "parts": [{"text": currentPrompt}]}` vào cuối danh sách trước.
+    3. Cắt lấy tối đa 7 tin nhắn gần nhất.
+    4. Bỏ qua tin mở đầu nếu có `role: "model"`.
+    5. Khử trùng lặp role liền nhau: duyệt mảng, nếu `contents[i]['role'] == contents[i+1]['role']`, loại bỏ phần tử cũ hơn để đảm bảo xen kẽ nghiêm ngặt `user` $\leftrightarrow$ `model`.
+  - Sử dụng `_client.post(...).timeout(const Duration(seconds: 10))`.
+  - Nếu mã phản hồi $\neq 200$, ném `AIServiceException(response.body, statusCode: response.statusCode)`.
 
 - [ ] **Bước 4: Chạy test xác nhận vượt qua**
   - Chạy: `flutter test test/gemini_ai_service_test.dart`
@@ -320,12 +400,12 @@
 - [ ] **Bước 5: Commit**
   ```bash
   git add nhom07-65ktpm/src/lib/data/services/ai_service.dart nhom07-65ktpm/src/lib/data/services/gemini_ai_service.dart nhom07-65ktpm/src/test/gemini_ai_service_test.dart
-  git commit -m "feat(nhom07-65ktpm): cap nhat gemini 2.5 flash payload, header auth, timeout va role sanitizer"
+  git commit -m "feat(nhom07-65ktpm): hoan thien gemini_ai_service voi mock client, timeout 10s va role deduplication"
   ```
 
 ---
 
-### Tác Vụ 6: Nâng Cấp State Provider & Cơ Chế Tự Phục Hồi Online
+### Tác Vụ 6: Nâng Cấp State Provider, Chống Spam Gửi Trùng & Tự Phục Hồi Online
 
 **Tệp tin:**
 - Sửa đổi: `nhom07-65ktpm/src/lib/providers/ai_assistant_provider.dart`
@@ -335,19 +415,25 @@
 - Tiêu thụ: `SafetyGuardrails`, `GeminiAIService`, `OfflineSleepEngine`, `DatabaseHelper` (nhận qua constructor).
 - Cung cấp: State `messages`, `isThinking`, `isOfflineMode`, `offlineReason`, hàm `sendMessage()`, hàm `clearHistory()`.
 
-- [ ] **Bước 1: Viết test cho Provider với Constructor Injection và Auto-recovery**
+- [ ] **Bước 1: Viết test cho Provider với Constructor Injection, Debounce và Auto-recovery**
   ```dart
   // nhom07-65ktpm/src/test/ai_assistant_provider_test.dart
   import 'package:flutter_test/flutter_test.dart';
   import 'package:dcsleep/providers/ai_assistant_provider.dart';
 
   void main() {
+    test('AIAssistantProvider ignores duplicate send when isThinking is true', () async {
+      final provider = AIAssistantProvider(databaseHelper: mockDb, aiService: mockService);
+      provider.setThinkingForTest(true);
+      await provider.sendMessage('Test prompt');
+      expect(provider.messages.isEmpty, true); // Bị chặn sớm
+    });
     test('AIAssistantProvider sets isOffline = false for SafetyGuardrails warning', () async {
       final provider = AIAssistantProvider(databaseHelper: mockDb, aiService: mockService);
       await provider.sendMessage('Uong thuoc ngu');
-      expect(provider.messages.last.isOffline, false); // Không phải lỗi mạng, không gắn tag ngoại tuyến
+      expect(provider.messages.last.isOffline, false);
     });
-    test('AIAssistantProvider resets isOfflineMode and offlineReason on successful response', () async {
+    test('AIAssistantProvider resets isOfflineMode on successful online response', () async {
       final provider = AIAssistantProvider(databaseHelper: mockDb, aiService: mockService);
       provider.setOfflineModeForTest(true, reason: 'Mất mạng');
       await provider.sendMessage('Nên ngủ mấy giờ');
@@ -368,18 +454,22 @@
          _aiService = aiService ?? GeminiAIService.instance,
          _apiKeyManager = apiKeyManager ?? ApiKeyManager();
     ```
-  - Khai báo state:
+  - State:
     - `bool _isOfflineMode = false; bool get isOfflineMode => _isOfflineMode;`
     - `String? _offlineReason; String? get offlineReason => _offlineReason;`
-  - Luồng trong `sendMessage(prompt, {sleepSummary})`:
-    1. Chụp snapshot lịch sử trước khi thêm tin mới:
+  - Hàm `sendMessage(prompt, {sleepSummary})`:
+    1. **Chống spam gửi trùng:**
+       ```dart
+       if (_isThinking || prompt.trim().isEmpty) return;
+       ```
+    2. Chụp snapshot lịch sử trước khi thêm tin mới:
        `final previousHistory = List<AIMessageModel>.from(_messages);`
-    2. Thêm tin nhắn người dùng vào danh sách và lưu vào SQLite (`is_offline = 0`).
-    3. Kiểm tra `SafetyGuardrails.evaluate(prompt)`:
+    3. Thêm tin nhắn người dùng vào danh sách và lưu vào SQLite (`is_offline = 0`).
+    4. Kiểm tra `SafetyGuardrails.evaluate(prompt)`:
        - Nếu vi phạm: Thêm tin nhắn cảnh báo bot vào danh sách, lưu SQLite với **`is_offline = 0`** (vì không phải lỗi mạng), notifyListeners và return.
-    4. Cập nhật `_isThinking = true; notifyListeners();`.
-    5. Nạp API Key qua `_apiKeyManager.getApiKey()` và set vào `_aiService`.
-    6. Khối `try / catch`:
+    5. Cập nhật `_isThinking = true; notifyListeners();`.
+    6. Nạp API Key qua `_apiKeyManager.getApiKey()` và set vào `_aiService`.
+    7. Khối `try / catch`:
        - **Thử gọi Online:**
          ```dart
          final response = await _aiService.askAssistant(
@@ -406,8 +496,8 @@
          final offlineReply = OfflineSleepEngine.getAdvice(prompt);
          // Lưu tin nhắn bot với is_offline = 1
          ```
-    7. `_isThinking = false; notifyListeners();`.
-  - Triển khai `clearHistory()`: gọi `_databaseHelper.clearAllAIMessages()` (không gọi static singleton) và làm mới danh sách `_messages`.
+    8. `_isThinking = false; notifyListeners();`.
+  - Triển khai `clearHistory()`: gọi `_databaseHelper.clearAllAIMessages()` (sử dụng biến đã inject) và làm mới danh sách `_messages`.
 
 - [ ] **Bước 3: Chạy test xác nhận vượt qua**
   - Chạy: `flutter test test/ai_assistant_provider_test.dart`
@@ -416,12 +506,12 @@
 - [ ] **Bước 4: Commit**
   ```bash
   git add nhom07-65ktpm/src/lib/providers/ai_assistant_provider.dart nhom07-65ktpm/src/test/ai_assistant_provider_test.dart
-  git commit -m "feat(nhom07-65ktpm): nang cap ai_assistant_provider voi di, history snapshot va offline reason"
+  git commit -m "feat(nhom07-65ktpm): nang cap ai_assistant_provider voi debounce, di, va offline reason"
   ```
 
 ---
 
-### Tác Vụ 7: Hoàn Thiện Giao Diện Chat UI (AIAssistantScreen) & Tích Hợp SleepContext
+### Tác Vụ 7: Hoàn Thiện Giao Diện Chat UI (AIAssistantScreen), SleepContext & Dialog Cấu Hình Key
 
 **Tệp tin:**
 - Sửa đổi: `nhom07-65ktpm/src/lib/screens/ai_assistant/ai_assistant_screen.dart`
@@ -429,15 +519,15 @@
 
 **Giao diện kết nối:**
 - Tiêu thụ: Trạng thái từ `AIAssistantProvider` và `SleepProvider`.
-- Cung cấp: Màn hình Chat UI hoàn chỉnh với AppBar có nút Xóa lịch sử (kèm Confirm Dialog), Banner ngoại tuyến hiển thị đúng nguyên nhân `_offlineReason`, Tag `[Ngoại tuyến]` trên tin nhắn, Medical Disclaimer cố định ở chân màn hình, và kích hoạt gửi câu hỏi khi bấm Quick Chips.
+- Cung cấp: Màn hình Chat UI hoàn chỉnh với AppBar có nút Cấu hình Key (hỗ trợ Demo), nút Xóa lịch sử (kèm Confirm Dialog), Banner ngoại tuyến hiển thị đúng nguyên nhân `_offlineReason` bằng `.withValues(alpha: 0.3)`, Tag `[Ngoại tuyến]` trên tin nhắn, Medical Disclaimer cố định ở chân màn hình, và kích hoạt gửi câu hỏi khi bấm Quick Chips.
 
-- [ ] **Bước 1: Viết widget test kiểm tra hiển thị Banner Ngoại tuyến, Reason và Disclaimer**
+- [ ] **Bước 1: Viết widget test kiểm tra hiển thị Banner Ngoại tuyến, Reason, Disclaimer và Key Dialog**
   ```dart
   // nhom07-65ktpm/src/test/ai_assistant_screen_test.dart
   import 'package:flutter_test/flutter_test.dart';
 
   void main() {
-    testWidgets('AIAssistantScreen displays offline banner with specific reason', (tester) async {
+    testWidgets('AIAssistantScreen displays offline banner with specific reason using withValues', (tester) async {
       // Bơm widget với mock provider isOfflineMode = true, offlineReason = 'Mất kết nối Internet'
       // Kiểm tra tìm thấy text banner
     });
@@ -448,12 +538,14 @@
   ```
 
 - [ ] **Bước 2: Cập nhật `ai_assistant_screen.dart`**
-  - Nút Action "Xóa lịch sử" trên AppBar: hiển thị `AlertDialog` xác nhận trước khi gọi `provider.clearHistory()`.
-  - Dải Banner Ngoại tuyến dưới AppBar:
+  - Nút Action trên AppBar:
+    1. **Nút Cấu hình API Key (Icon `Icons.vpn_key_outlined`):** Mở `showDialog` cho phép nhập/dán Gemini API Key trực tiếp, có nút Lưu (gọi `ApiKeyManager().saveCustomApiKey(key)`) và Xóa key để dễ dàng demo trực tiếp trước giảng viên.
+    2. **Nút Xóa lịch sử (Icon `Icons.delete_outline`):** Hiển thị `AlertDialog` xác nhận trước khi gọi `provider.clearHistory()`.
+  - Dải Banner Ngoại tuyến dưới AppBar (Sử dụng chuẩn `.withValues` của Flutter 3.x):
     ```dart
     if (aiProv.isOfflineMode)
       Container(
-        color: Colors.amber.shade900.withOpacity(0.3),
+        color: Colors.amber.shade900.withValues(alpha: 0.3),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         child: Row(
           children: [
@@ -471,8 +563,14 @@
     ```
   - Xử lý Quick Chips: Khi bấm vào chip, tự động gọi `_handleSend(chipText)`.
   - Hàm `_handleSend([String? presetText])`:
-    - Trích xuất dữ liệu từ `SleepProvider`:
-      `final summary = 'Mục tiêu: ${sleepProv.goal.targetDurationHours}h. Tỷ lệ tuân thủ: ${sleepProv.complianceRate.round()}%.';`
+    - Đọc đối chiếu chính xác từ `SleepProvider`:
+      ```dart
+      final sleepProv = context.read<SleepProvider>();
+      final goalHours = sleepProv.goal.targetDurationHours;
+      final compliance = sleepProv.complianceRate.round();
+      final avgHours = sleepProv.averageDurationHours.toStringAsFixed(1);
+      final summary = 'Mục tiêu: ${goalHours}h. Tỷ lệ tuân thủ 7 ngày: $compliance%. Thời lượng ngủ TB: ${avgHours}h.';
+      ```
     - Gọi `aiProv.sendMessage(text, sleepSummary: summary)`.
   - Bong bóng tin nhắn:
     - Nếu `message.isOffline == true`: hiển thị nhãn chip nhỏ `[Ngoại tuyến]` màu xám trên đầu bong bóng bot.
@@ -486,7 +584,7 @@
 - [ ] **Bước 4: Commit**
   ```bash
   git add nhom07-65ktpm/src/lib/screens/ai_assistant/ai_assistant_screen.dart nhom07-65ktpm/src/test/ai_assistant_screen_test.dart
-  git commit -m "feat(nhom07-65ktpm): hoan thien ai_assistant_screen voi banner ly do offline va disclaimer co dinh"
+  git commit -m "feat(nhom07-65ktpm): hoan thien ai_assistant_screen voi key dialog demo, withValues va disclaimer"
   ```
 
 ---
@@ -497,13 +595,14 @@
 - Kiểm thử tích hợp: `nhom07-65ktpm/src/test/ai_assistant_integration_test.dart`
 
 **Giao diện kết nối:**
-- Kiểm thử toàn diện 8 tiêu chí nghiệm thu từ Mục 8 của bản đặc tả kỹ thuật với `sqflite_common_ffi`.
+- Kiểm thử toàn diện 8 tiêu chí nghiệm thu từ Mục 8 của bản đặc tả kỹ thuật với `sqflite_common_ffi` và `inMemoryDatabasePath`.
 
-- [ ] **Bước 1: Viết test tích hợp end-to-end với SQLite FFI**
+- [ ] **Bước 1: Viết test tích hợp end-to-end với SQLite In-Memory**
   ```dart
   // nhom07-65ktpm/src/test/ai_assistant_integration_test.dart
   import 'package:flutter_test/flutter_test.dart';
   import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+  import 'package:dcsleep/data/database/database_helper.dart';
 
   void main() {
     setUpAll(() {
@@ -511,8 +610,16 @@
       databaseFactory = databaseFactoryFfi;
     });
 
+    setUp(() async {
+      await DatabaseHelper.instance.initCustomDatabase(path: inMemoryDatabasePath);
+    });
+
+    tearDown(() async {
+      await DatabaseHelper.instance.closeDatabase();
+    });
+
     test('End-to-end flow: safe prompt, medication block, and offline fallback', () async {
-      // Kiểm thử toàn bộ 8 tiêu chí nghiệm thu
+      // Kiểm thử toàn bộ 8 tiêu chí nghiệm thu không để lại file database rác
     });
   }
   ```
