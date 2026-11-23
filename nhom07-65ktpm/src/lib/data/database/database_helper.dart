@@ -14,6 +14,9 @@ class DatabaseHelper {
   static Database? _database;
   static String? _customPath;
 
+  /// Phiên bản CSDL hiện tại (v2 hỗ trợ cột is_offline)
+  static int get databaseVersion => AppConstants.dbVersion;
+
   DatabaseHelper._init();
 
   Future<Database> get database async {
@@ -55,11 +58,12 @@ class DatabaseHelper {
       path,
       version: AppConstants.dbVersion,
       onCreate: _createDB,
-      onUpgrade: _onUpgrade,
+      onUpgrade: onUpgrade,
     );
   }
 
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+  @visibleForTesting
+  Future<void> onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE ${AppConstants.tableAIConversations} ADD COLUMN is_offline INTEGER NOT NULL DEFAULT 0;');
     }
