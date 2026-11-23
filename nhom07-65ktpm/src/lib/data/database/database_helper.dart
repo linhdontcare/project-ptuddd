@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import '../../core/constants/app_constants.dart';
@@ -11,24 +12,57 @@ import '../models/ai_message_model.dart';
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+  static String? _customPath;
 
   DatabaseHelper._init();
 
   Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB(AppConstants.dbName);
+    if (_database != null && _database!.isOpen) return _database!;
+    _database = await _initDB(_customPath ?? AppConstants.dbName);
     return _database!;
   }
 
+  @visibleForTesting
+  Future<Database> initCustomDatabase({String? path}) async {
+    if (_database != null && _database!.isOpen) {
+      await _database!.close();
+      _database = null;
+    }
+    _customPath = path ?? inMemoryDatabasePath;
+    _database = await _initDB(_customPath!);
+    return _database!;
+  }
+
+  @visibleForTesting
+  Future<void> closeDatabase() async {
+    if (_database != null && _database!.isOpen) {
+      await _database!.close();
+    }
+    _database = null;
+    _customPath = null;
+  }
+
   Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, filePath);
+    final String path;
+    if (_customPath != null || filePath == inMemoryDatabasePath) {
+      path = filePath;
+    } else {
+      final dbPath = await getDatabasesPath();
+      path = p.join(dbPath, filePath);
+    }
 
     return await openDatabase(
       path,
       version: AppConstants.dbVersion,
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE ${AppConstants.tableAIConversations} ADD COLUMN is_offline INTEGER NOT NULL DEFAULT 0;');
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -102,6 +136,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         text TEXT NOT NULL,
         is_user INTEGER NOT NULL,
+        is_offline INTEGER NOT NULL DEFAULT 0,
         timestamp TEXT NOT NULL
       )
     ''');
@@ -265,5 +300,13 @@ class DatabaseHelper {
   Future<int> insertAIMessage(AIMessageModel msg) async {
     final db = await database;
     return await db.insert(AppConstants.tableAIConversations, msg.toMap());
+  }
+
+  // Alias for getAIMessages
+  Future<List<AIMessageModel>> getAllAIMessages() => getAIMessages();
+
+  Future<int> clearAllAIMessages() async {
+    final db = await database;
+    return await db.delete(AppConstants.tableAIConversations);
   }
 }
