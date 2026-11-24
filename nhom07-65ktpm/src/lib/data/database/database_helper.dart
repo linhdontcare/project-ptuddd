@@ -12,13 +12,17 @@ import '../models/ai_message_model.dart';
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+  static String? _customPath;
+
+  /// Phiên bản CSDL hiện tại (v2 hỗ trợ cột is_offline)
+  static int get databaseVersion => AppConstants.dbVersion;
 
   DatabaseHelper._init();
 
   Future<Database?> get database async {
-    if (_database != null) return _database;
+    if (_database != null && _database!.isOpen) return _database;
     try {
-      _database = await _initDB(AppConstants.dbName);
+      _database = await _initDB(_customPath ?? AppConstants.dbName);
       return _database;
     } catch (e) {
       debugPrint('[DatabaseHelper] SQLite fallback: $e');
@@ -26,15 +30,48 @@ class DatabaseHelper {
     }
   }
 
+  @visibleForTesting
+  Future<Database> initCustomDatabase({String? path}) async {
+    if (_database != null && _database!.isOpen) {
+      await _database!.close();
+      _database = null;
+    }
+    _customPath = path ?? inMemoryDatabasePath;
+    _database = await _initDB(_customPath!);
+    return _database!;
+  }
+
+  @visibleForTesting
+  Future<void> closeDatabase() async {
+    if (_database != null && _database!.isOpen) {
+      await _database!.close();
+    }
+    _database = null;
+    _customPath = null;
+  }
+
   Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, filePath);
+    final String path;
+    if (_customPath != null || filePath == inMemoryDatabasePath) {
+      path = filePath;
+    } else {
+      final dbPath = await getDatabasesPath();
+      path = p.join(dbPath, filePath);
+    }
 
     return await openDatabase(
       path,
       version: AppConstants.dbVersion,
       onCreate: _createDB,
+      onUpgrade: onUpgrade,
     );
+  }
+
+  @visibleForTesting
+  Future<void> onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE ${AppConstants.tableAIConversations} ADD COLUMN is_offline INTEGER NOT NULL DEFAULT 0;');
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -108,6 +145,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         text TEXT NOT NULL,
         is_user INTEGER NOT NULL,
+        is_offline INTEGER NOT NULL DEFAULT 0,
         timestamp TEXT NOT NULL
       )
     ''');
@@ -253,8 +291,9 @@ class DatabaseHelper {
     final db = await database;
     if (db == null) {
       return [
-        ReminderModel(title: 'Chuẩn bị đi ngủ', hour: 22, minute: 30, type: 'bedtime'),
-        ReminderModel(title: 'Thức giấc đúng giờ', hour: 7, minute: 0, type: 'wake'),
+        ReminderModel(title: 'Chuẩn bị đi ngủ (tắt điện thoại)', hour: 22, minute: 30, type: 'prepare_sleep'),
+        ReminderModel(title: 'Đến giờ ngủ mục tiêu', hour: 23, minute: 0, type: 'bedtime'),
+        ReminderModel(title: 'Thức dậy đón ngày mới', hour: 7, minute: 0, type: 'wakeup'),
       ];
     }
     final maps = await db.query(AppConstants.tableReminders);
@@ -294,5 +333,14 @@ class DatabaseHelper {
     final db = await database;
     if (db == null) return 0;
     return await db.insert(AppConstants.tableAIConversations, msg.toMap());
+  }
+
+  // Alias for getAIMessages
+  Future<List<AIMessageModel>> getAllAIMessages() => getAIMessages();
+
+  Future<int> clearAllAIMessages() async {
+    final db = await database;
+    if (db == null) return 0;
+    return await db.delete(AppConstants.tableAIConversations);
   }
 }

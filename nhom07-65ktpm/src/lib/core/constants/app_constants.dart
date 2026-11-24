@@ -15,7 +15,7 @@ class AppConstants {
 
   // Database
   static const String dbName = 'dcsleep.db';
-  static const int dbVersion = 1;
+  static const int dbVersion = 2;
 
   // Tables
   static const String tableUsers = 'users';
