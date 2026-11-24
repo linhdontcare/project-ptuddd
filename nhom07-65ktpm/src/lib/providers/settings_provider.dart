@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '../data/database/database_helper.dart';
 import '../data/models/reminder_model.dart';
 import '../data/models/user_model.dart';
 
 class SettingsProvider extends ChangeNotifier {
-  UserModel _user = UserModel(
+  final UserModel _user = UserModel(
     name: 'Mã Khánh Linh',
     email: 'mkl.deeptry@gmail.com',
     studentId: '2351170602',
@@ -40,4 +41,3 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
-
