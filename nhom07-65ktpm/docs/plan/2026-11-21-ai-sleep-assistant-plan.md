@@ -208,47 +208,58 @@
 
 ---
 
-### Tác Vụ 3: Hoàn Thiện Bộ Tri Thức Chuyên Gia Ngoại Tuyến (OfflineSleepEngine)
+### Tác Vụ 3: Bộ Tri Thức Chuyên Gia Ngoại Tuyến Nâng Cao (OfflineSleepEngine)
 
 **Tệp tin:**
-- Tạo mới: `nhom07-65ktpm/src/lib/data/services/offline_sleep_engine.dart`
+- Sửa đổi: `nhom07-65ktpm/src/lib/data/services/offline_sleep_engine.dart`
 - Kiểm thử: `nhom07-65ktpm/src/test/offline_sleep_engine_test.dart`
 
 **Giao diện kết nối:**
-- Tiêu thụ: Chuỗi prompt của người dùng.
-- Cung cấp: Hàm `OfflineSleepEngine.getAdvice(String prompt) -> String` cung cấp câu trả lời ngoại tuyến tức thì cho 4 chủ đề và nhánh Default Fallback.
+- Tiêu thụ: `prompt` (chuỗi người dùng nhập), `sleepContext` (tùy chọn), `SafetyGuardrails.removeDiacritics`.
+- Cung cấp:
+  - `OfflineSleepEngine.getAdvice(String prompt, {String? sleepContext}) -> String`
+  - `OfflineSleepEngine.supportedTopicCount` (hằng số hoặc getter = 8).
 
-- [ ] **Bước 1: Viết test cho 4 chủ đề giấc ngủ và nhánh Default Fallback**
-  ```dart
-  // nhom07-65ktpm/src/test/offline_sleep_engine_test.dart
-  import 'package:flutter_test/flutter_test.dart';
-  import 'package:dcsleep/data/services/offline_sleep_engine.dart';
+- [ ] **Bước 1: Kiểm tra tên package trong `pubspec.yaml`**
+  - Mở `pubspec.yaml` xác nhận chính xác trường `name: dcsleep` dùng cho import trong unit test.
 
-  void main() {
-    test('OfflineSleepEngine answers power nap questions', () {
-      final ans = OfflineSleepEngine.getAdvice('Ngủ trưa bao nhiêu phút');
-      expect(ans.contains('Power Nap'), true);
-    });
-    test('OfflineSleepEngine provides Default Fallback for unknown queries', () {
-      final ans = OfflineSleepEngine.getAdvice('Hôm nay tôi stress quá');
-      expect(ans.contains('chế độ ngoại tuyến'), true);
-      expect(ans.contains('kỹ thuật thở 4-7-8'), true);
-    });
-  }
-  ```
+- [ ] **Bước 2: Viết bộ Unit Test toàn diện trước khi code (TDD - Red)**
+  - Kiểm thử 4 chủ đề cốt lõi (có dấu, không dấu, viết hoa, dính dấu câu):
+    - Power Nap: `"Ngủ trưa bao nhiêu phút?"`, `"NGU TRUA 45 phut??"` → chứa `Power Nap`, `10 – 20 phút` (hoặc `15 - 20`), `Sleep Inertia`.
+    - Thở 4-7-8 & Giãn cơ (PMR): `"Huong dan tho 478"`, `"kỹ thuật thở 4-7-8 giãn cơ"` → chứa `4 giây`, `7 giây`, `8 giây`, `phó giao cảm`.
+    - Caffeine & Dinh dưỡng: `"Chiều uống cà phê sau mấy giờ?"`, `"uong tra sua buoi toi"` → chứa `5 – 7`, `14:00`, `2 tiếng`.
+    - Khó ngủ / Trằn trọc: `"Nằm trằn trọc mãi không ngủ được"`, `"tran troc luc nua dem"` → chứa `20 phút`, `đèn vàng`.
+  - Kiểm thử 4 chủ đề mở rộng chuẩn Sleep Hygiene:
+    - Ánh sáng xanh & Thiết bị điện tử: `"Lướt điện thoại trước khi ngủ"` → chứa `Melatonin`, `30`.
+    - Chu kỳ 90 phút & Nhịp sinh học: `"Chu kỳ giấc ngủ 90 phút và ngủ bù cuối tuần"` → chứa `90 phút`, `Social Jetlag`.
+    - Stress / Overthinking: `"Áp lực deadline bị overthinking khó vào giấc"` → chứa `Brain Dump`.
+    - Môi trường phòng ngủ & Đánh giá nhật ký: `"Phòng ngủ bao nhiêu độ?"` → chứa `20 – 24°C`; `"Đánh giá tiến độ giấc ngủ của tôi"` kèm `sleepContext: 'Mục tiêu: 8.0h. Tỷ lệ tuân thủ: 72%.'` → phản hồi có nhắc lại dữ liệu `72%`.
+  - Kiểm thử độ chính xác của Weighted Scoring:
+    - Câu pha trộn: `"Tôi ăn tối bình thường nhưng nằm trằn trọc không ngủ được"` → phải khớp Khó ngủ / Trằn trọc (20 phút), không khớp nhầm sang Caffeine/Ăn uống.
+  - Kiểm thử Default Fallback & Medical Disclaimer:
+    - Câu ngoài chủ đề (`"Hôm nay thời tiết thế nào?"`) và chuỗi rỗng (`"   "`) → chứa `chế độ ngoại tuyến`, nhắc `4-7-8`, hướng dẫn dùng Quick Chips.
+    - Mọi câu trả lời ở tất cả các nhánh đều chứa câu miễn trừ y tế (*không thay thế chỉ định y tế* hoặc *không thay thế chẩn đoán*).
 
-- [ ] **Bước 2: Triển khai lớp `OfflineSleepEngine`**
-  - Đóng gói 4 nhánh tri thức y khoa chuẩn (Thở 4-7-8, Ngủ trưa Power Nap 15-20p, Vệ sinh Caffeine sau 14h, Trằn trọc 20 phút).
-  - Bổ sung nhánh `Default Fallback` hướng dẫn người dùng sử dụng Quick Chips khi câu hỏi không thuộc 4 chủ đề trên.
-
-- [ ] **Bước 3: Chạy test xác nhận vượt qua**
+- [ ] **Bước 3: Chạy test xác nhận thất bại (Red)**
   - Chạy: `flutter test test/offline_sleep_engine_test.dart`
-  - Kết quả mong đợi: PASS.
+  - Kết quả mong đợi: FAIL do chưa hỗ trợ đầy đủ 8 chủ đề và weighted scoring.
 
-- [ ] **Bước 4: Commit**
+- [ ] **Bước 4: Triển khai `OfflineSleepEngine` tại `lib/data/services/offline_sleep_engine.dart`**
+  - `_WeightedKeyword` & `_SleepTopic` mô hình hóa từ khóa với trọng số (từ khóa đặc trưng 3-4, cụm phụ 2, từ chung 1).
+  - Hàm `_normalizeInput(String raw)`: loại bỏ dấu tiếng Việt, làm sạch dấu câu (`?`, `!`, `,`, `.`, `;`, `:`, `(`, `)`), chuẩn hóa khoảng trắng thừa.
+  - Kho 8 chủ đề chuyên sâu (Power Nap, 4-7-8 & PMR, Caffeine & Dinh dưỡng, Khó ngủ & Trằn trọc, Ánh sáng xanh & Màn hình, Nhịp sinh học & 90 phút, Stress & Overthinking, Môi trường ngủ & Tiến độ nhật ký kèm `sleepContext`).
+  - Thuật toán chấm điểm tổng trọng số (Weighted Keyword Scoring), chọn chủ đề có điểm cao nhất, fallback về Default Fallback khi `bestScore == 0` hoặc prompt rỗng.
+  - Luôn đính kèm `_disclaimer` vào chân mọi câu trả lời.
+
+- [ ] **Bước 5: Chạy lại Unit Test & Phân tích tĩnh (Green)**
+  - Chạy: `flutter test test/offline_sleep_engine_test.dart`
+  - Chạy: `flutter analyze lib/data/services/offline_sleep_engine.dart test/offline_sleep_engine_test.dart`
+  - Kết quả mong đợi: 100% PASS và No issues found!.
+
+- [ ] **Bước 6: Commit riêng Tác vụ 3**
   ```bash
   git add nhom07-65ktpm/src/lib/data/services/offline_sleep_engine.dart nhom07-65ktpm/src/test/offline_sleep_engine_test.dart
-  git commit -m "feat(nhom07-65ktpm): xay dung offline sleep engine kem default fallback"
+  git commit -m "feat(nhom07-65ktpm): nang cap offline sleep engine 8 chu de, weighted scoring va sleep context"
   ```
 
 ---
