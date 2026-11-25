@@ -53,6 +53,7 @@ class SleepProvider extends ChangeNotifier {
     required int wakeHour,
     required int wakeMinute,
     required double targetDurationHours,
+    required String activeDays,
   }) async {
     _goal = SleepGoalModel(
       id: _goal.id,
@@ -61,7 +62,7 @@ class SleepProvider extends ChangeNotifier {
       wakeHour: wakeHour,
       wakeMinute: wakeMinute,
       targetDurationHours: targetDurationHours,
-      activeDays: _goal.activeDays,
+      activeDays: activeDays,
       isReminderEnabled: _goal.isReminderEnabled,
     );
     await DatabaseHelper.instance.updateSleepGoal(_goal);
