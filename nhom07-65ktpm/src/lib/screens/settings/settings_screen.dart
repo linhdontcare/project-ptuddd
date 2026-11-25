@@ -145,6 +145,56 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 20),
+
+          // 5. Logout Button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.softRed,
+                side: const BorderSide(color: AppTheme.softRed),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.logout),
+              label: const Text(
+                'Đăng xuất tài khoản',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Xác nhận đăng xuất'),
+                    content: const Text(
+                      'Bạn có chắc muốn đăng xuất khỏi tài khoản hiện tại không?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Hủy'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          context.read<SettingsProvider>().logout();
+                          Navigator.of(context).popUntil((route) => route.isFirst);
+                        },
+                        child: const Text(
+                          'Đăng xuất',
+                          style: TextStyle(color: AppTheme.softRed),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );

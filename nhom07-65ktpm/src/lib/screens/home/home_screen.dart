@@ -7,11 +7,17 @@ import '../../providers/sleep_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../sleep_management/sleep_goal_screen.dart';
 import '../sleep_management/sleep_diary_screen.dart';
+import '../settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int) onNavigateTab;
+  final VoidCallback? onOpenDrawer;
 
-  const HomeScreen({super.key, required this.onNavigateTab});
+  const HomeScreen({
+    super.key,
+    required this.onNavigateTab,
+    this.onOpenDrawer,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -59,6 +65,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: widget.onOpenDrawer != null
+            ? IconButton(
+                icon: const Icon(Icons.menu),
+                tooltip: 'Menu mở rộng',
+                onPressed: widget.onOpenDrawer,
+              )
+            : null,
         title: const Text('DCSleep Dashboard'),
         actions: [
           IconButton(
@@ -68,6 +81,16 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const SleepGoalScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Cài đặt & Tài khoản',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
               );
             },
           ),

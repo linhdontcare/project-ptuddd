@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'home/home_screen.dart';
 import 'sleep_management/sleep_goal_screen.dart';
 import 'power_nap/power_nap_screen.dart';
@@ -15,6 +16,7 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _currentIndex = 0;
 
   void _onTabSelected(int index) {
@@ -26,7 +28,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      HomeScreen(onNavigateTab: _onTabSelected),
+      HomeScreen(
+        onNavigateTab: _onTabSelected,
+        onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+      ),
       const SleepGoalScreen(),
       const PowerNapScreen(),
       const StatisticsScreen(),
@@ -34,6 +39,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     ];
 
     return Scaffold(
+      key: _scaffoldKey,
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -46,8 +52,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 children: [
                   Icon(Icons.bedtime, size: 40, color: Color(0xFF38BDF8)),
                   SizedBox(height: 10),
-                  Text('DCSleep App', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                  Text('Nhóm 07 - Lớp 65KTPM', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                  Text(
+                    'DCSleep App',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    'Nhóm 07 - Lớp 65KTPM',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                  ),
                 ],
               ),
             ),
@@ -97,7 +113,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               title: const Text('Thư viện kiến thức giấc ngủ'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SleepTipsScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SleepTipsScreen()),
+                );
               },
             ),
             ListTile(
@@ -105,16 +124,16 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               title: const Text('Cài đặt & Quyền riêng tư'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
               },
             ),
           ],
         ),
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onTabSelected,
