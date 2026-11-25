@@ -11,6 +11,7 @@ class PowerNapScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final napProv = context.watch<NapProvider>();
+    final isCompleted = napProv.isCompleted;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Giấc Ngủ Ngắn (Power Nap)')),
@@ -89,16 +90,16 @@ class PowerNapScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _statusMessage(napProv.status),
+                      isCompleted
+                          ? 'Đã hết giờ ngủ ngắn'
+                          : _statusMessage(napProv.status),
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: napProv.status == NapStatus.completed
+                        color: isCompleted
                             ? AppTheme.softGreen
                             : AppTheme.textMuted,
-                        fontSize: napProv.status == NapStatus.completed
-                            ? 16
-                            : 13,
-                        fontWeight: napProv.status == NapStatus.completed
+                        fontSize: isCompleted ? 16 : 13,
+                        fontWeight: isCompleted
                             ? FontWeight.bold
                             : FontWeight.normal,
                       ),

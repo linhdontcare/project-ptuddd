@@ -19,6 +19,7 @@ class NapProvider extends ChangeNotifier {
   int get remainingSeconds => _remainingSeconds;
   NapStatus get status => _status;
   bool get isRunning => _status == NapStatus.running;
+  bool get isCompleted => _status == NapStatus.completed;
   List<NapRecordModel> get napHistory => _napHistory;
 
   double get progress {
@@ -46,10 +47,15 @@ class NapProvider extends ChangeNotifier {
 
   void startTimer() {
     if (isRunning || _status == NapStatus.paused) return;
-    if (_status == NapStatus.completed) {
+    if (isCompleted) {
       _remainingSeconds = _selectedPresetMinutes * 60;
     }
+    _startCountdown();
+  }
+
+  void _startCountdown() {
     _status = NapStatus.running;
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 1) {
         _remainingSeconds--;
@@ -72,7 +78,7 @@ class NapProvider extends ChangeNotifier {
 
   void resumeTimer() {
     if (_status != NapStatus.paused) return;
-    startTimer();
+    _startCountdown();
   }
 
   void cancelTimer() {
