@@ -343,4 +343,53 @@ class DatabaseHelper {
     if (db == null) return 0;
     return await db.delete(AppConstants.tableAIConversations);
   }
+
+  // --- Users Auth CRUD ---
+  static final List<UserModel> _fallbackUsers = [
+    UserModel(
+      id: 1,
+      name: 'Mã Khánh Linh',
+      email: 'mkl.deeptry@gmail.com',
+      studentId: '2351170602',
+      className: '65KTPM',
+    ),
+  ];
+
+  Future<UserModel?> getUserByEmail(String email) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final db = await database;
+    if (db == null) {
+      for (final u in _fallbackUsers) {
+        if (u.email.toLowerCase() == normalizedEmail) return u;
+      }
+      return null;
+    }
+    final maps = await db.query(
+      AppConstants.tableUsers,
+      where: 'LOWER(email) = ?',
+      whereArgs: [normalizedEmail],
+      limit: 1,
+    );
+    if (maps.isNotEmpty) {
+      return UserModel.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<int> registerUser(UserModel user) async {
+    final db = await database;
+    if (db == null) {
+      final newUser = UserModel(
+        id: _fallbackUsers.length + 1,
+        name: user.name,
+        email: user.email,
+        studentId: user.studentId,
+        className: user.className,
+        createdAt: user.createdAt,
+      );
+      _fallbackUsers.add(newUser);
+      return newUser.id!;
+    }
+    return await db.insert(AppConstants.tableUsers, user.toMap());
+  }
 }

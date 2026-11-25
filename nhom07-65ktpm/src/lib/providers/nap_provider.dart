@@ -83,10 +83,20 @@ class NapProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _isDisposed = false;
+
   @override
   void dispose() {
+    _isDisposed = true;
     _timer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
   }
 }
 

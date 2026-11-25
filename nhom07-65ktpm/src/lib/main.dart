@@ -6,6 +6,7 @@ import 'providers/sleep_provider.dart';
 import 'providers/nap_provider.dart';
 import 'providers/ai_assistant_provider.dart';
 import 'providers/settings_provider.dart';
+import 'screens/auth/login_screen.dart';
 import 'screens/main_navigation_screen.dart';
 
 void main() async {
@@ -35,7 +36,7 @@ class DCSleepApp extends StatelessWidget {
             title: 'DCSleep',
             debugShowCheckedModeBanner: false,
             theme: settings.isDarkMode ? AppTheme.darkTheme : ThemeData.light(useMaterial3: true),
-            home: const MainNavigationScreen(),
+            home: settings.isLoggedIn ? const MainNavigationScreen() : const LoginScreen(),
           );
         },
       ),
