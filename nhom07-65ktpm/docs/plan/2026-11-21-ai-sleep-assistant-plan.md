@@ -416,108 +416,206 @@
 
 ---
 
-### Tác Vụ 6: Nâng Cấp State Provider, Chống Spam Gửi Trùng & Tự Phục Hồi Online
+### Tác Vụ 6: Nâng Cấp State Provider, Chống Spam & Tự Phục Hồi Online (AIAssistantProvider)
+
+> **Dành cho Agent/Kỹ sư triển khai:** Thực thi theo quy trình TDD từng bước (Red $\rightarrow$ Green $\rightarrow$ Analyze $\rightarrow$ Commit) trên nhánh hiện tại. Sử dụng cú pháp checkbox (`- [ ]`) để theo dõi tiến độ.
+
+**Mục tiêu:** Nâng cấp `AIAssistantProvider` với Constructor Injection đầy đủ (`DatabaseHelper`, `AIService`, `ApiKeyManager`), chống race condition khi bấm gửi liên tục, tích hợp `SafetyGuardrails` (không gắn nhầm nhãn ngoại tuyến), tự động fallback sang `OfflineSleepEngine` kèm `sleepContext`, phân loại chính xác lý do ngoại tuyến (`offlineReason`) và tự phục hồi chế độ trực tuyến khi mạng ổn định lại.
+
+#### Ràng Buộc Kỹ Thuật (Constraints)
+- **Dependency Injection 100%:** Không gọi cứng `DatabaseHelper.instance` hay `GeminiAIService.instance` bên trong bất kỳ phương thức nào (`loadMessages`, `sendMessage`, `clearHistory`); toàn bộ đi qua các trường được tiêm từ constructor (có default value là singleton/instance mặc định).
+- **Chống Race Condition tuyệt đối:** Đặt `_isThinking = true; notifyListeners();` ngay sau bước kiểm tra rỗng/spam (trước mọi lệnh `await`), và đưa `_isThinking = false; notifyListeners();` vào khối `finally`.
+- **Tương thích biên dịch tạm thời:** Giữ tạm alias `bool get isLoading => _isThinking;` trong Tác vụ 6 để `ai_assistant_screen.dart` (cập nhật ở Tác vụ 7) không bị lỗi biên dịch giữa chừng.
+- **Bảo vệ khi đọc Keystore:** Đặt `await _apiKeyManager.getApiKey()` bên trong khối `try` để lỗi thiết bị/plugin không làm crash app mà chuyển êm sang `OfflineSleepEngine`.
+- **Đồng bộ ngữ cảnh ngoại tuyến:** Truyền `sleepContext: sleepSummary` vào `OfflineSleepEngine.getAdvice(...)` khi fallback.
+- **Chuẩn hóa đầu vào & kiểu lỗi:** Dùng chung `final cleanPrompt = prompt.trim();` cho toàn bộ luồng; bắt trực tiếp kiểu `TimeoutException` (`dart:async`) và `SocketException` (`dart:io`) thay vì so chuỗi `toString()`.
+- **Tiêu chuẩn mã nguồn:** Đạt 0 errors, 0 warnings trên `flutter analyze`.
+
+#### Trọng Tâm Rà Soát (Review Focus)
+- **Crash `MissingPluginException` trong test:** Mọi bài test của `AIAssistantProvider` bắt buộc tiêm cả 3 mock (`databaseHelper`, `aiService`, `apiKeyManager`) thay vì để rơi về `FlutterSecureStorage` thật.
+- **Trùng tin user cuối khi gửi API:** Bắt buộc chụp `final previousHistory = List<AIMessageModel>.from(_messages);` trước khi thêm `userMsg` vào `_messages`.
+- **Nhãn `[Ngoại tuyến]` trên cảnh báo y tế:** Phản hồi từ `SafetyGuardrails` phải lưu với `isOffline: false` và không bật `_isOfflineMode = true`.
+- **Kẹt trạng thái đang nhập (`_isThinking == true`):** Mọi nhánh kết thúc (trả về sớm do `SafetyGuardrails`, gọi API thành công, fallback ngoại tuyến, hay lỗi ghi DB) đều phải thoát qua `finally` để trả `_isThinking = false`.
+
+#### Chi Tiết Triển Khai Tác Vụ 6
 
 **Tệp tin:**
 - Sửa đổi: `nhom07-65ktpm/src/lib/providers/ai_assistant_provider.dart`
-- Kiểm thử: `nhom07-65ktpm/src/test/ai_assistant_provider_test.dart`
+- Tạo mới / Cập nhật kiểm thử: `nhom07-65ktpm/src/test/ai_assistant_provider_test.dart`
 
 **Giao diện kết nối:**
-- Tiêu thụ: `SafetyGuardrails`, `GeminiAIService`, `OfflineSleepEngine`, `DatabaseHelper` (nhận qua constructor).
-- Cung cấp: State `messages`, `isThinking`, `isOfflineMode`, `offlineReason`, hàm `sendMessage()`, hàm `clearHistory()`.
+- Tiêu thụ: `DatabaseHelper` (`getAllAIMessages`, `insertAIMessage`, `clearAllAIMessages`), `AIService`, `ApiKeyManager`, `SafetyGuardrails`, `OfflineSleepEngine`, `AIMessageModel`.
+- Cung cấp: State `messages`, `isThinking` (và alias tạm `isLoading`), `isOfflineMode`, `offlineReason`; các phương thức `loadMessages()`, `sendMessage(String prompt, {String? sleepSummary})`, `clearHistory()`, cùng helper `@visibleForTesting` phục vụ unit test.
 
-- [ ] **Bước 1: Viết test cho Provider với Constructor Injection, Debounce và Auto-recovery**
-  ```dart
-  // nhom07-65ktpm/src/test/ai_assistant_provider_test.dart
-  import 'package:flutter_test/flutter_test.dart';
-  import 'package:dcsleep/providers/ai_assistant_provider.dart';
+#### Các Bước Thực Hiện
 
-  void main() {
-    test('AIAssistantProvider ignores duplicate send when isThinking is true', () async {
-      final provider = AIAssistantProvider(databaseHelper: mockDb, aiService: mockService);
-      provider.setThinkingForTest(true);
-      await provider.sendMessage('Test prompt');
-      expect(provider.messages.isEmpty, true); // Bị chặn sớm
-    });
-    test('AIAssistantProvider sets isOffline = false for SafetyGuardrails warning', () async {
-      final provider = AIAssistantProvider(databaseHelper: mockDb, aiService: mockService);
-      await provider.sendMessage('Uong thuoc ngu');
-      expect(provider.messages.last.isOffline, false);
-    });
-    test('AIAssistantProvider resets isOfflineMode on successful online response', () async {
-      final provider = AIAssistantProvider(databaseHelper: mockDb, aiService: mockService);
-      provider.setOfflineModeForTest(true, reason: 'Mất mạng');
-      await provider.sendMessage('Nên ngủ mấy giờ');
-      expect(provider.isOfflineMode, false);
-      expect(provider.offlineReason, isNull);
-    });
-  }
-  ```
+- [ ] **Bước 1: Kiểm tra tên package và viết bộ Unit Test toàn diện (TDD - Red)**
+  - Mở `nhom07-65ktpm/src/pubspec.yaml` đối chiếu tên package, sau đó viết `nhom07-65ktpm/src/test/ai_assistant_provider_test.dart` sử dụng các lớp Fake/Mock nhẹ (không cần code-gen) tiêm đủ 3 dependency (`FakeDatabaseHelper`, `FakeAIService`, `FakeApiKeyManager`), bao phủ **7 kịch bản bắt buộc**:
+    1. **Debounce / Chống spam:** Đặt `setThinkingForTest(true)` $\rightarrow$ gọi `sendMessage('Test')` $\rightarrow$ `messages` vẫn rỗng, không ghi DB, không gọi API. Tương tự với chuỗi rỗng/chỉ có khoảng trắng (`'   '`).
+    2. **SafetyGuardrails Pre-filter:** Gọi `sendMessage('Uong thuoc ngu')` $\rightarrow$ API không bị gọi, tin nhắn cảnh báo bot có `isOffline == false`, `isOfflineMode` vẫn `false`, và `isThinking` trở về `false` (xác nhận khối `finally` chạy đúng ngay cả khi return sớm).
+    3. **Gọi Online thành công & Auto-recovery:** Đặt trước `setOfflineModeForTest(true, reason: 'Mất mạng')` $\rightarrow$ gửi `'  Nên ngủ mấy giờ  '` kèm `sleepSummary` $\rightarrow$ xác nhận `aiService` nhận đúng `cleanPrompt`, `sleepContext`, và `history` không chứa tin user vừa gửi; kết quả có `messages.last.isOffline == false`, `isOfflineMode == false`, `offlineReason == null`.
+    4. **Fallback lỗi HTTP 429:** `FakeAIService` ném `AIServiceException('Rate limit', statusCode: 429)` $\rightarrow$ `isOfflineMode == true`, `offlineReason` chứa `'429'`, tin nhắn bot lưu với `isOffline == true`.
+    5. **Fallback lỗi 401/403, `TimeoutException` & `SocketException` + truyền `sleepContext`:**
+       - `statusCode: 401` $\rightarrow$ `offlineReason` báo khóa API không hợp lệ.
+       - `TimeoutException` $\rightarrow$ `offlineReason` báo quá thời gian phản hồi (> 10s).
+       - `SocketException` với câu hỏi tiến độ kèm `sleepSummary: 'Tỷ lệ tuân thủ: 72%.'` $\rightarrow$ `offlineReason` báo mất kết nối Internet và phản hồi từ `OfflineSleepEngine` chứa `'72%'`.
+    6. **Lỗi đọc `ApiKeyManager` (Keystore exception):** `FakeApiKeyManager` ném ngoại lệ $\rightarrow$ không crash, chuyển êm sang `OfflineSleepEngine` với `isOfflineMode == true` và `isThinking == false`.
+    7. **`loadMessages()` & `clearHistory()` qua DI:** Xác nhận `loadMessages()` nạp dữ liệu từ `_databaseHelper.getAllAIMessages()` và `clearHistory()` gọi `_databaseHelper.clearAllAIMessages()` đồng thời làm rỗng `provider.messages`.
 
-- [ ] **Bước 2: Cập nhật `AIAssistantProvider`**
-  - Chuyển sang sử dụng Constructor Injection:
-    ```dart
-    AIAssistantProvider({
-      DatabaseHelper? databaseHelper,
-      AIService? aiService,
-      ApiKeyManager? apiKeyManager,
-    }) : _databaseHelper = databaseHelper ?? DatabaseHelper.instance,
-         _aiService = aiService ?? GeminiAIService.instance,
-         _apiKeyManager = apiKeyManager ?? ApiKeyManager();
+- [ ] **Bước 2: Chạy test xác nhận kiểm thử thất bại (Red)**
+  - Chạy:
+    ```bash
+    cd nhom07-65ktpm/src && flutter test test/ai_assistant_provider_test.dart
     ```
-  - State:
-    - `bool _isOfflineMode = false; bool get isOfflineMode => _isOfflineMode;`
-    - `String? _offlineReason; String? get offlineReason => _offlineReason;`
-  - Hàm `sendMessage(prompt, {sleepSummary})`:
-    1. **Chống spam gửi trùng:**
-       ```dart
-       if (_isThinking || prompt.trim().isEmpty) return;
-       ```
-    2. Chụp snapshot lịch sử trước khi thêm tin mới:
-       `final previousHistory = List<AIMessageModel>.from(_messages);`
-    3. Thêm tin nhắn người dùng vào danh sách và lưu vào SQLite (`is_offline = 0`).
-    4. Kiểm tra `SafetyGuardrails.evaluate(prompt)`:
-       - Nếu vi phạm: Thêm tin nhắn cảnh báo bot vào danh sách, lưu SQLite với **`is_offline = 0`** (vì không phải lỗi mạng), notifyListeners và return.
-    5. Cập nhật `_isThinking = true; notifyListeners();`.
-    6. Nạp API Key qua `_apiKeyManager.getApiKey()` và set vào `_aiService`.
-    7. Khối `try / catch`:
-       - **Thử gọi Online:**
-         ```dart
-         final response = await _aiService.askAssistant(
-           prompt: prompt,
-           sleepContext: sleepSummary,
-           history: previousHistory,
-         );
-         _isOfflineMode = false;
-         _offlineReason = null;
-         // Lưu tin nhắn bot với is_offline = 0
-         ```
-       - **Bắt ngoại lệ (`AIServiceException` / Exception):**
-         ```dart
-         _isOfflineMode = true;
-         if (e is AIServiceException && e.statusCode == 429) {
-           _offlineReason = 'Dịch vụ AI trực tuyến quá tải (HTTP 429)';
-         } else if (e is AIServiceException && (e.statusCode == 401 || e.statusCode == 403)) {
-           _offlineReason = 'Khóa API không hợp lệ hoặc hết hạn';
-         } else if (e.toString().contains('TimeoutException')) {
-           _offlineReason = 'Quá thời gian phản hồi (> 10s)';
-         } else {
-           _offlineReason = 'Mất kết nối Internet hoặc chưa có API Key';
-         }
-         final offlineReply = OfflineSleepEngine.getAdvice(prompt);
-         // Lưu tin nhắn bot với is_offline = 1
-         ```
-    8. `_isThinking = false; notifyListeners();`.
-  - Triển khai `clearHistory()`: gọi `_databaseHelper.clearAllAIMessages()` (sử dụng biến đã inject) và làm mới danh sách `_messages`.
+  - Kết quả mong đợi: FAIL (vì `ai_assistant_provider.dart` bản hiện tại chưa có DI, `isThinking`, `isOfflineMode`, `offlineReason`, `clearHistory`).
 
-- [ ] **Bước 3: Chạy test xác nhận vượt qua**
-  - Chạy: `flutter test test/ai_assistant_provider_test.dart`
-  - Kết quả mong đợi: PASS.
+- [ ] **Bước 3: Triển khai `AIAssistantProvider` tại `lib/providers/ai_assistant_provider.dart`**
+  - Import chuẩn: `dart:async` (`TimeoutException`), `dart:io` (`SocketException`), `package:flutter/foundation.dart` (`ChangeNotifier`, `@visibleForTesting`), cùng các model/service liên quan.
+  - Constructor Injection & State:
+    ```dart
+    class AIAssistantProvider extends ChangeNotifier {
+      final DatabaseHelper _databaseHelper;
+      final AIService _aiService;
+      final ApiKeyManager _apiKeyManager;
 
-- [ ] **Bước 4: Commit**
+      List<AIMessageModel> _messages = [];
+      bool _isThinking = false;
+      bool _isOfflineMode = false;
+      String? _offlineReason;
+
+      AIAssistantProvider({
+        DatabaseHelper? databaseHelper,
+        AIService? aiService,
+        ApiKeyManager? apiKeyManager,
+      })  : _databaseHelper = databaseHelper ?? DatabaseHelper.instance,
+            _aiService = aiService ?? GeminiAIService.instance,
+            _apiKeyManager = apiKeyManager ?? ApiKeyManager();
+
+      List<AIMessageModel> get messages => List.unmodifiable(_messages);
+      bool get isThinking => _isThinking;
+      bool get isLoading => _isThinking; // Alias tạm giữ tương thích tới Tác vụ 7
+      bool get isOfflineMode => _isOfflineMode;
+      String? get offlineReason => _offlineReason;
+    ```
+  - Helper phục vụ unit test (`@visibleForTesting`):
+    - `setThinkingForTest(bool value)`
+    - `setOfflineModeForTest(bool value, {String? reason})`
+  - Phương thức `loadMessages()`:
+    - Gọi `final loaded = await _databaseHelper.getAllAIMessages();` (dùng biến đã inject) $\rightarrow$ gán `_messages = List<AIMessageModel>.from(loaded);` $\rightarrow$ `notifyListeners();`.
+  - Phương thức `sendMessage(String prompt, {String? sleepSummary})`:
+    ```dart
+    Future<void> sendMessage(String prompt, {String? sleepSummary}) async {
+      final cleanPrompt = prompt.trim();
+      if (_isThinking || cleanPrompt.isEmpty) return;
+
+      // Khóa ngay trước mọi lệnh await để chặn triệt để double-tap race condition
+      _isThinking = true;
+      notifyListeners();
+
+      try {
+        // 1. Chụp snapshot lịch sử TRƯỚC khi thêm tin nhắn mới của user
+        final previousHistory = List<AIMessageModel>.from(_messages);
+
+        // 2. Lưu và hiển thị tin nhắn người dùng (is_offline = 0)
+        final userMsg = AIMessageModel(
+          text: cleanPrompt,
+          isUser: true,
+          isOffline: false,
+        );
+        await _databaseHelper.insertAIMessage(userMsg);
+        _messages.add(userMsg);
+        notifyListeners();
+
+        // 3. Tầng 1: Kiểm tra SafetyGuardrails cục bộ
+        final safetyResult = SafetyGuardrails.evaluate(cleanPrompt);
+        if (safetyResult.isBlocked && safetyResult.warningMessage != null) {
+          final warningMsg = AIMessageModel(
+            text: safetyResult.warningMessage!,
+            isUser: false,
+            isOffline: false, // Rào cản an toàn chủ động, không phải lỗi mạng
+          );
+          await _databaseHelper.insertAIMessage(warningMsg);
+          _messages.add(warningMsg);
+          return;
+        }
+
+        // 4. Tầng 2: Nạp API Key và gọi dịch vụ AI trực tuyến (bên trong try/catch)
+        try {
+          final apiKey = await _apiKeyManager.getApiKey();
+          _aiService.setApiKey(apiKey);
+
+          final responseText = await _aiService.askAssistant(
+            prompt: cleanPrompt,
+            sleepContext: sleepSummary,
+            history: previousHistory,
+          );
+
+          // Thành công -> Tự phục hồi trạng thái Online
+          _isOfflineMode = false;
+          _offlineReason = null;
+
+          final aiMsg = AIMessageModel(
+            text: responseText,
+            isUser: false,
+            isOffline: false,
+          );
+          await _databaseHelper.insertAIMessage(aiMsg);
+          _messages.add(aiMsg);
+        } catch (e) {
+          // Fallback sang bộ tri thức ngoại tuyến
+          _isOfflineMode = true;
+          _offlineReason = _resolveOfflineReason(e);
+
+          final offlineReply = OfflineSleepEngine.getAdvice(
+            cleanPrompt,
+            sleepContext: sleepSummary,
+          );
+          final offlineMsg = AIMessageModel(
+            text: offlineReply,
+            isUser: false,
+            isOffline: true,
+          );
+          await _databaseHelper.insertAIMessage(offlineMsg);
+          _messages.add(offlineMsg);
+        }
+      } finally {
+        _isThinking = false;
+        notifyListeners();
+      }
+    }
+    ```
+  - Hàm phân loại lý do ngoại tuyến `_resolveOfflineReason(Object error)`:
+    - `error is AIServiceException`:
+      - `statusCode == 429` $\rightarrow$ `'Dịch vụ AI trực tuyến quá tải (HTTP 429)'`
+      - `statusCode == 401 || statusCode == 403` $\rightarrow$ `'Khóa API không hợp lệ hoặc hết hạn'`
+      - `statusCode == null` (chưa cấu hình key) $\rightarrow$ `'Chưa cấu hình API Key'`
+      - Các mã HTTP khác $\rightarrow$ `'Dịch vụ AI trực tuyến tạm gián đoạn (HTTP ${error.statusCode})'`
+    - `error is TimeoutException` $\rightarrow$ `'Quá thời gian phản hồi (> 10s)'`
+    - `error is SocketException` $\rightarrow$ `'Mất kết nối Internet'`
+    - Mặc định còn lại $\rightarrow$ `'Không thể kết nối dịch vụ AI trực tuyến'`
+  - Phương thức `clearHistory()`:
+    - Nếu `_isThinking` đang `true` thì bỏ qua (tránh xung đột đang ghi).
+    - Gọi `await _databaseHelper.clearAllAIMessages();`, làm rỗng `_messages.clear();` và gọi `notifyListeners();`.
+
+- [ ] **Bước 4: Chạy Unit Test & Phân tích tĩnh (Green)**
+  - Chạy test riêng Tác vụ 6:
+    ```bash
+    cd nhom07-65ktpm/src && flutter test test/ai_assistant_provider_test.dart
+    ```
+  - Chạy toàn bộ test hiện có để đảm bảo không ảnh hưởng các tác vụ trước:
+    ```bash
+    cd nhom07-65ktpm/src && flutter test
+    ```
+  - Chạy phân tích tĩnh:
+    ```bash
+    cd nhom07-65ktpm/src && flutter analyze
+    ```
+  - Kết quả mong đợi: Toàn bộ test PASS và `No issues found!`.
+
+- [ ] **Bước 5: Commit riêng Tác vụ 6**
   ```bash
   git add nhom07-65ktpm/src/lib/providers/ai_assistant_provider.dart nhom07-65ktpm/src/test/ai_assistant_provider_test.dart
-  git commit -m "feat(nhom07-65ktpm): nang cap ai_assistant_provider voi debounce, di, va offline reason"
+  git commit -m "feat(nhom07-65ktpm): nang cap ai_assistant_provider voi di, chong race condition, offline context va auto-recovery"
   ```
 
 ---
