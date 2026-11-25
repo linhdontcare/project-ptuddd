@@ -89,7 +89,6 @@ class SleepProvider extends ChangeNotifier {
       isGoalMet: isGoalMet,
       createdAt: DateTime.now(),
     );
-
     await DatabaseHelper.instance.insertSleepRecord(record);
     await loadData();
   }

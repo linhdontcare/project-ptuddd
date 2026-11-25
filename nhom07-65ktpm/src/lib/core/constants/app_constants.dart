@@ -11,7 +11,7 @@ class AppConstants {
   static const double defaultTargetDurationHours = 8.0;
 
   // Power nap presets (minutes)
-  static const List<int> napPresetsMinutes = [10, 15, 20, 25, 30];
+  static const List<int> napPresetsMinutes = [10, 15, 20, 30];
 
   // Database
   static const String dbName = 'dcsleep.db';
