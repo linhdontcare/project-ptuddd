@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'data/database/database_factory_initializer_stub.dart'
+    if (dart.library.io)
+      'data/database/database_factory_initializer_io.dart'
+    as database_factory_initializer;
 import 'core/theme/app_theme.dart';
 import 'providers/sleep_provider.dart';
 import 'providers/nap_provider.dart';
@@ -11,6 +15,7 @@ import 'screens/main_navigation_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  database_factory_initializer.initializeDatabaseFactory();
   runApp(const DCSleepApp());
 }
 

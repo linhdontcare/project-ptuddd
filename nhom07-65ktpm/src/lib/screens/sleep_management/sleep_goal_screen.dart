@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/time_utils.dart';
+import '../../data/models/sleep_goal_model.dart';
 import '../../providers/sleep_provider.dart';
 
 class SleepGoalScreen extends StatefulWidget {
@@ -13,17 +14,40 @@ class SleepGoalScreen extends StatefulWidget {
 }
 
 class _SleepGoalScreenState extends State<SleepGoalScreen> {
+  static const List<String> _weekdays = [
+    'T2',
+    'T3',
+    'T4',
+    'T5',
+    'T6',
+    'T7',
+    'CN',
+  ];
+
   late TimeOfDay _bedtime;
   late TimeOfDay _wakeTime;
   late double _targetDuration;
+  late Set<String> _activeDays;
+  SleepGoalModel? _observedGoal;
 
   @override
-  void initState() {
-    super.initState();
-    final goal = context.read<SleepProvider>().goal;
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final goal = context.watch<SleepProvider>().goal;
+    if (identical(goal, _observedGoal)) return;
+
+    _observedGoal = goal;
     _bedtime = TimeOfDay(hour: goal.bedtimeHour, minute: goal.bedtimeMinute);
     _wakeTime = TimeOfDay(hour: goal.wakeHour, minute: goal.wakeMinute);
     _targetDuration = goal.targetDurationHours;
+    _activeDays = goal.activeDays
+        .split(',')
+        .map((day) => day.trim())
+        .where(_weekdays.contains)
+        .toSet();
+    if (_activeDays.isEmpty) {
+      _activeDays.addAll(_weekdays);
+    }
   }
 
   Future<void> _selectBedtime() async {
@@ -65,6 +89,21 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
     _targetDuration = (endMinutes - startMinutes) / 60.0;
   }
 
+  void _toggleActiveDay(String day, bool selected) {
+    if (selected) {
+      setState(() => _activeDays.add(day));
+      return;
+    }
+
+    if (_activeDays.length == 1 && _activeDays.contains(day)) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Chọn ít nhất 1 ngày')));
+      return;
+    }
+
+    setState(() => _activeDays.remove(day));
+  }
+
   Future<void> _saveGoal() async {
     await context.read<SleepProvider>().updateGoal(
       bedtimeHour: _bedtime.hour,
@@ -72,6 +111,7 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
       wakeHour: _wakeTime.hour,
       wakeMinute: _wakeTime.minute,
       targetDurationHours: _targetDuration,
+      activeDays: _weekdays.where(_activeDays.contains).join(','),
     );
 
     if (mounted) {
@@ -80,7 +120,9 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
           content: Text('Đã cập nhật mục tiêu giấc ngủ thành công!'),
         ),
       );
-      Navigator.pop(context);
+      if (Navigator.of(context).canPop()) {
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -136,6 +178,34 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
                         fontWeight: FontWeight.bold,
                         color: AppTheme.softGreen,
                       ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ngày áp dụng',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _weekdays.map((day) {
+                        return FilterChip(
+                          label: Text(day),
+                          selected: _activeDays.contains(day),
+                          onSelected: (selected) =>
+                              _toggleActiveDay(day, selected),
+                        );
+                      }).toList(),
                     ),
                   ],
                 ),
