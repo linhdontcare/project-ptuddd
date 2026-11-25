@@ -1,86 +1,207 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:dcsleep/data/models/ai_message_model.dart';
+import 'package:dcsleep/data/services/ai_service.dart';
+import 'package:dcsleep/data/services/offline_sleep_engine.dart';
 
-class GeminiAIService {
-  static final GeminiAIService instance = GeminiAIService._init();
-  GeminiAIService._init();
+/// Dịch vụ gọi Gemini 2.5 Flash REST API (tách biệt hoàn toàn khỏi OfflineSleepEngine).
+/// Sử dụng header `x-goog-api-key`, hỗ trợ inject `http.Client` để kiểm thử bằng `MockClient`,
+/// timeout 10 giây và chuẩn hóa lịch sử hội thoại `contents` tránh lỗi 400 Bad Request.
+class GeminiAIService implements AIService {
+  static final GeminiAIService instance = GeminiAIService();
 
+  static const String _endpoint =
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+  static const String _baseSystemInstruction = '''
+[VAI TRÒ VÀ TÍNH CÁCH]:
+Bạn là Chuyên gia Tư vấn Giấc ngủ Khoa học của ứng dụng DCSleep. Hãy trả lời ấm áp, thấu cảm, khoa học, súc tích bằng tiếng Việt. Độ dài câu trả lời lý tưởng dưới 200 từ.
+
+[PHẠM VI TRI THỨC ĐƯỢC PHÉP TƯ VẤN]:
+1. Nguyên tắc Vệ sinh Giấc ngủ (Sleep Hygiene): Ánh sáng, nhiệt độ phòng ngủ (20-24°C), kiểm soát caffeine (tránh sau 14h), hạn chế ánh sáng xanh từ thiết bị số.
+2. Nhịp sinh học (Circadian Rhythm): Quy tắc thức ngủ đều đặn, chu kỳ giấc ngủ 90 phút (REM & NREM).
+3. Kỹ thuật thư giãn hỗ trợ vào giấc: Kỹ thuật thở 4-7-8, giãn cơ lũy tiến (PMR), quy tắc 20 phút rời giường khi mất ngủ.
+4. Quản lý giấc ngủ ngắn (Power Nap): 10 - 20 phút buổi trưa (12:30 - 13:30), tránh ngủ quá 30 phút gây quán tính giấc ngủ (Sleep Inertia).
+
+[RANH GIỚI VÀ QUY TẮC BẮT BUỘC]:
+- KHÔNG BAO GIỜ đưa ra chẩn đoán y khoa hoặc kê đơn, hướng dẫn liều lượng bất kỳ loại thuốc ngủ/thuốc an thần nào.
+- Luôn kết thúc bằng lưu ý ngắn: Lời khuyên mang tính chất hỗ trợ xây dựng lối sống khoa học, không thay thế chỉ định y tế.''';
+
+  final http.Client _client;
+  final Duration _timeout;
   String _apiKey = '';
 
+  GeminiAIService({
+    http.Client? client,
+    Duration? timeout,
+  })  : _client = client ?? http.Client(),
+        _timeout = timeout ?? const Duration(seconds: 10);
+
+  @override
   void setApiKey(String key) {
-    _apiKey = key;
+    _apiKey = key.trim();
   }
 
-  Future<String> askSleepAssistant(String userPrompt, {String? sleepSummaryContext}) async {
-    // If an API key is configured, call Gemini 1.5 Flash endpoint
-    if (_apiKey.isNotEmpty) {
-      try {
-        final url = Uri.parse(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$_apiKey',
+  @override
+  @override
+  bool get hasApiKey => _apiKey.trim().isNotEmpty;
+
+  @override
+  Future<String> askAssistant({
+    required String prompt,
+    String? sleepContext,
+    List<AIMessageModel> history = const [],
+  }) async {
+    if (!hasApiKey) {
+      throw AIServiceException('Chưa cấu hình API Key');
+    }
+
+    final payload = {
+      'system_instruction': {
+        'parts': [
+          {'text': _buildSystemInstruction(sleepContext)},
+        ],
+      },
+      'contents': buildContentsPayload(
+        history: history,
+        currentPrompt: prompt,
+      ),
+      'generationConfig': {
+        'temperature': 0.7,
+        'topP': 0.95,
+        'maxOutputTokens': 1024,
+        'thinkingConfig': {
+          'thinkingBudget': 0,
+        },
+      },
+    };
+
+    try {
+      final response = await _client
+          .post(
+            Uri.parse(_endpoint),
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': _apiKey,
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(_timeout);
+
+      final responseBody = utf8.decode(response.bodyBytes);
+
+      if (response.statusCode != 200) {
+        throw AIServiceException(
+          responseBody,
+          statusCode: response.statusCode,
         );
-
-        final systemInstruction =
-            'Bạn là chuyên gia tư vấn giấc ngủ khoa học của ứng dụng DCSleep. Hãy trả lời thân thiện, súc tích, bằng tiếng Việt. '
-            'Tư vấn dựa trên các nguyên tắc vệ sinh giấc ngủ (Sleep Hygiene), kỹ thuật thở thư giãn, thời lượng ngủ trưa (Power nap 15-20p), '
-            'hạn chế ánh sáng xanh. Luôn kèm lời khuyên: đây là gợi ý thói quen, không phải chẩn đoán y tế.';
-
-        final promptWithContext = sleepSummaryContext != null
-            ? '$systemInstruction\n\n[Dữ liệu nhật ký giấc ngủ của người dùng]: $sleepSummaryContext\n\n[Câu hỏi]: $userPrompt'
-            : '$systemInstruction\n\n[Câu hỏi]: $userPrompt';
-
-        final response = await http.post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'contents': [
-              {
-                'parts': [
-                  {'text': promptWithContext}
-                ]
-              }
-            ]
-          }),
-        );
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          final candidateText = data['candidates']?[0]?['content']?['parts']?[0]?['text'];
-          if (candidateText != null) {
-            return candidateText.toString().trim();
-          }
-        }
-      } catch (_) {
-        // Fallback to local expert knowledge base if offline or network fails
       }
+
+      final data = jsonDecode(responseBody) as Map<String, dynamic>;
+      final candidates = data['candidates'] as List<dynamic>?;
+      if (candidates == null || candidates.isEmpty) {
+        throw AIServiceException(
+          'Phản hồi từ Gemini API không có kết quả',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final firstCandidate = candidates.first as Map<String, dynamic>?;
+      final content = firstCandidate?['content'] as Map<String, dynamic>?;
+      final parts = content?['parts'] as List<dynamic>?;
+      final firstPart = parts != null && parts.isNotEmpty ? parts.first : null;
+      final text = firstPart is Map<String, dynamic>
+          ? firstPart['text']?.toString().trim()
+          : null;
+
+      if (text == null || text.isEmpty) {
+        throw AIServiceException(
+          'Nội dung phản hồi từ Gemini API rỗng',
+          statusCode: response.statusCode,
+        );
+      }
+
+      return text;
+    } on AIServiceException {
+      rethrow;
+    } on TimeoutException {
+      throw AIServiceException('Quá thời gian chờ phản hồi từ máy chủ AI');
+    } catch (e) {
+      throw AIServiceException('Lỗi kết nối dịch vụ AI: $e');
+    }
+  }
+
+  String _buildSystemInstruction(String? sleepContext) {
+    if (sleepContext == null || sleepContext.trim().isEmpty) {
+      return _baseSystemInstruction;
+    }
+    return '$_baseSystemInstruction\n\n[DỮ LIỆU THỰC TẾ TỪ DCSLEEP HIỆN TẠI]:\n${sleepContext.trim()}';
+  }
+
+  /// Chuẩn hóa mảng `contents` cho Gemini REST API:
+  /// 1. Nạp lịch sử từ `history`.
+  /// 2. Nối `currentPrompt` (`role: user`) vào cuối TRƯỚC khi khử trùng lặp.
+  /// 3. Cắt cửa sổ trượt tối đa 7 tin nhắn gần nhất.
+  /// 4. Bỏ qua các tin nhắn `role: model` ở đầu mảng.
+  /// 5. Khử trùng lặp các role đứng liền nhau (giữ phần tử mới hơn).
+  List<Map<String, dynamic>> buildContentsPayload({
+    List<AIMessageModel> history = const [],
+    required String currentPrompt,
+  }) {
+    final rawContents = <Map<String, dynamic>>[];
+
+    for (final msg in history) {
+      if (msg.text.trim().isEmpty) continue;
+      rawContents.add({
+        'role': msg.isUser ? 'user' : 'model',
+        'parts': [
+          {'text': msg.text},
+        ],
+      });
     }
 
-    // Smart Local Expert Knowledge Base Fallback (Tuân thủ đề cương: chạy ngoại tuyến, không lỗi khi không có mạng)
-    final lower = userPrompt.toLowerCase();
+    rawContents.add({
+      'role': 'user',
+      'parts': [
+        {'text': currentPrompt},
+      ],
+    });
 
-    if (lower.contains('ngủ trưa') || lower.contains('power nap') || lower.contains('nap')) {
-      return '🌙 Về giấc ngủ trưa (Power Nap):\n\n'
-          '1. Thời lượng lý tưởng: 10 - 20 phút. Tránh ngủ quá 30 phút vì dễ rơi vào giấc ngủ sâu (Slow-wave sleep), khi thức dậy sẽ bị mệt mỏi, choáng váng (hiện tượng Sleep Inertia).\n'
-          '2. Thời điểm tốt nhất: Trong khoảng 12:30 - 13:30, cách giờ ngủ đêm ít nhất 6 tiếng.\n'
-          '3. Bạn có thể sử dụng tab "Giấc ngủ ngắn" trong DCSleep để bấm đếm ngược 15-20 phút nhé!';
-    } else if (lower.contains('khó ngủ') || lower.contains('mất ngủ') || lower.contains('thức khuya')) {
-      return '💡 Gợi ý khắc phục khi khó ngủ hoặc thức khuya:\n\n'
-          '1. Áp dụng quy tắc 20 phút: Nếu nằm trên giường 20 phút chưa ngủ được, hãy ngồi dậy, đọc sách giấy dưới ánh đèn vàng mờ cho đến khi thấy buồn ngủ.\n'
-          '2. Kỹ thuật thở 4-7-8: Hít vào bằng mũi trong 4 giây, nín thở 7 giây, thở ra từ từ bằng miệng trong 8 giây (lặp lại 4 chu kỳ).\n'
-          '3. Tắt điện thoại hoặc bật chế độ Giờ đi ngủ (Bedtime Mode) trước giờ ngủ 30 phút để tránh ánh sáng xanh ức chế Melatonin.\n\n'
-          '*Lưu ý: Đây là lời khuyên xây dựng thói quen, không thay thế chẩn đoán y tế chuyên khoa.*';
-    } else if (lower.contains('cà phê') || lower.contains('caffeine') || lower.contains('ăn')) {
-      return '☕ Vệ sinh giấc ngủ về đồ ăn & thức uống:\n\n'
-          '1. Caffeine: Tránh uống cà phê, trà đậm, nước tăng lực sau 14:00 (Caffeine có thời gian bán hủy từ 5 - 7 tiếng trong cơ thể).\n'
-          '2. Bữa tối: Không ăn quá no trong vòng 2 tiếng trước khi đi ngủ để tránh trào ngược dạ dày.\n'
-          '3. Có thể uống một ly nước ấm hoặc trà hoa cúc nhẹ để làm dịu thần kinh.';
-    } else if (lower.contains('tiến độ') || lower.contains('nhật ký') || lower.contains('đánh giá')) {
-      return '📊 Đánh giá thói quen dựa trên nhật ký của bạn:\n\n'
-          'Việc duy trì khung giờ ngủ cố định (ví dụ 23:00 - 07:00) cả vào ngày trong tuần lẫn cuối tuần là yếu tố quan trọng nhất để ổn định nhịp sinh học (Circadian Rhythm). Hãy tiếp tục ghi nhận nhật ký đều đặn để theo dõi biểu đồ tiến độ nhé!';
+    final windowed = rawContents.length > 7
+        ? rawContents.sublist(rawContents.length - 7)
+        : List<Map<String, dynamic>>.from(rawContents);
+
+    while (windowed.isNotEmpty && windowed.first['role'] == 'model') {
+      windowed.removeAt(0);
     }
 
-    return 'Chào bạn! Theo các nghiên cứu về vệ sinh giấc ngủ:\n\n'
-        '• Người trưởng thành cần từ 7 - 9 giờ ngủ mỗi đêm để não bộ đào thải độc tố và phục hồi năng lượng.\n'
-        '• Hãy giữ phòng ngủ mát mẻ (khoảng 20 - 24°C), tối hoàn toàn và yên tĩnh.\n'
-        '• Bạn có thể hỏi tôi về: "kỹ thuật thở 4-7-8", "thời lượng ngủ trưa bao nhiêu", "cách bỏ thói quen lướt điện thoại ban đêm". Tôi luôn sẵn sàng hỗ trợ bạn!';
+    final deduped = <Map<String, dynamic>>[];
+    for (final item in windowed) {
+      if (deduped.isNotEmpty && deduped.last['role'] == item['role']) {
+        deduped.removeLast();
+      }
+      deduped.add(item);
+    }
+
+    return deduped;
+  }
+
+  // Wrapper tương thích ngược tạm thời cho AIAssistantProvider cho tới khi hoàn tất Tác vụ 6.
+  Future<String> askSleepAssistant(
+    String userPrompt, {
+    String? sleepSummaryContext,
+  }) async {
+    try {
+      return await askAssistant(
+        prompt: userPrompt,
+        sleepContext: sleepSummaryContext,
+      );
+    } on AIServiceException {
+      return OfflineSleepEngine.getAdvice(
+        userPrompt,
+        sleepContext: sleepSummaryContext,
+      );
+    }
   }
 }
