@@ -52,6 +52,21 @@ void main() {
     expect(loginErr, isNull);
     expect(provider.isLoggedIn, true);
     expect(provider.user.email, 'testuser@65ktpm.vn');
+
+    // Update profile
+    await provider.updateProfile(
+      name: 'Nguyễn Văn Updated',
+      studentId: '2351178888',
+      className: '65KTPM2',
+    );
+    expect(provider.user.name, 'Nguyễn Văn Updated');
+    expect(provider.user.studentId, '2351178888');
+
+    // Toggle theme & AI history preference
+    await provider.toggleTheme(false);
+    expect(provider.isDarkMode, false);
+    await provider.toggleSaveAiHistory(false);
+    expect(provider.saveAiHistory, false);
   });
 
   testWidgets('DCSleep app builds cleanly when logged in', (WidgetTester tester) async {

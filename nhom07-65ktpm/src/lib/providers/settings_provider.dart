@@ -9,6 +9,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _keyIsLoggedIn = 'is_logged_in';
   static const String _keyCurrentUserEmail = 'current_user_email';
   static const String _keyPwdPrefix = 'auth_pwd_';
+  static const String _keyDarkMode = 'is_dark_mode';
+  static const String _keySaveAiHistory = 'save_ai_history';
 
   UserModel _user = UserModel(
     name: 'Mã Khánh Linh',
@@ -19,16 +21,20 @@ class SettingsProvider extends ChangeNotifier {
   List<ReminderModel> _reminders = [];
   bool _isDarkMode = true;
   bool _isLoggedIn = false;
+  bool _saveAiHistory = true;
 
   UserModel get user => _user;
   List<ReminderModel> get reminders => _reminders;
   bool get isDarkMode => _isDarkMode;
   bool get isLoggedIn => _isLoggedIn;
+  bool get saveAiHistory => _saveAiHistory;
 
   Future<void> loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
+      _isDarkMode = prefs.getBool(_keyDarkMode) ?? true;
+      _saveAiHistory = prefs.getBool(_keySaveAiHistory) ?? true;
       final savedEmail = prefs.getString(_keyCurrentUserEmail);
       if (_isLoggedIn && savedEmail != null && savedEmail.isNotEmpty) {
         final dbUser = await DatabaseHelper.instance.getUserByEmail(savedEmail);
@@ -45,9 +51,7 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<String?> login(String email, String password) async {
     final trimmedEmail = email.trim().toLowerCase();
-    final foundUser = await DatabaseHelper.instance.getUserByEmail(
-      trimmedEmail,
-    );
+    final foundUser = await DatabaseHelper.instance.getUserByEmail(trimmedEmail);
     if (foundUser == null) {
       return 'Email chưa được đăng ký trong hệ thống.';
     }
@@ -55,7 +59,6 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedPwd = prefs.getString('$_keyPwdPrefix$trimmedEmail');
-      // Default seeded account password fallback is '123456'
       final expectedPwd =
           savedPwd ?? (trimmedEmail == 'mkl.deeptry@gmail.com' ? '123456' : '');
       if (expectedPwd.isNotEmpty && password != expectedPwd) {
@@ -81,9 +84,7 @@ class SettingsProvider extends ChangeNotifier {
     required String password,
   }) async {
     final trimmedEmail = email.trim().toLowerCase();
-    final existingUser = await DatabaseHelper.instance.getUserByEmail(
-      trimmedEmail,
-    );
+    final existingUser = await DatabaseHelper.instance.getUserByEmail(trimmedEmail);
     if (existingUser != null) {
       return 'Email này đã được sử dụng. Vui lòng dùng email khác.';
     }
@@ -112,6 +113,24 @@ class SettingsProvider extends ChangeNotifier {
     return null;
   }
 
+  Future<void> updateProfile({
+    required String name,
+    required String studentId,
+    required String className,
+  }) async {
+    final updated = UserModel(
+      id: _user.id,
+      name: name.trim(),
+      email: _user.email,
+      studentId: studentId.trim(),
+      className: className.trim(),
+      createdAt: _user.createdAt,
+    );
+    await DatabaseHelper.instance.updateUser(updated);
+    _user = updated;
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -136,8 +155,30 @@ class SettingsProvider extends ChangeNotifier {
     await loadSettings();
   }
 
-  void toggleTheme(bool dark) {
+  Future<void> toggleTheme(bool dark) async {
     _isDarkMode = dark;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyDarkMode, dark);
+    } catch (e) {
+      debugPrint('[SettingsProvider] Dark mode prefs error: $e');
+    }
+  }
+
+  Future<void> toggleSaveAiHistory(bool val) async {
+    _saveAiHistory = val;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keySaveAiHistory, val);
+    } catch (e) {
+      debugPrint('[SettingsProvider] Save AI history prefs error: $e');
+    }
+  }
+
+  Future<void> clearAllPersonalData() async {
+    await DatabaseHelper.instance.clearPersonalData();
     notifyListeners();
   }
 

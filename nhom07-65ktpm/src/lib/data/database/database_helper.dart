@@ -392,4 +392,36 @@ class DatabaseHelper {
     }
     return await db.insert(AppConstants.tableUsers, user.toMap());
   }
+
+  Future<void> updateUser(UserModel user) async {
+    final normalizedEmail = user.email.trim().toLowerCase();
+    final db = await database;
+    if (db == null) {
+      for (int i = 0; i < _fallbackUsers.length; i++) {
+        if (_fallbackUsers[i].email.toLowerCase() == normalizedEmail) {
+          _fallbackUsers[i] = user;
+          break;
+        }
+      }
+      return;
+    }
+    await db.update(
+      AppConstants.tableUsers,
+      {
+        'name': user.name,
+        'student_id': user.studentId,
+        'class_name': user.className,
+      },
+      where: 'LOWER(email) = ?',
+      whereArgs: [normalizedEmail],
+    );
+  }
+
+  Future<void> clearPersonalData() async {
+    final db = await database;
+    if (db == null) return;
+    await db.delete(AppConstants.tableSleepRecords);
+    await db.delete(AppConstants.tableNapRecords);
+    await db.delete(AppConstants.tableAIConversations);
+  }
 }

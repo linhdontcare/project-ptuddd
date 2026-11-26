@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../data/database/database_helper.dart';
 import '../data/models/ai_message_model.dart';
 import '../data/services/gemini_ai_service.dart';
@@ -10,6 +12,15 @@ class AIAssistantProvider extends ChangeNotifier {
   List<AIMessageModel> get messages => _messages;
   bool get isLoading => _isLoading;
 
+  Future<bool> _shouldSaveHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('save_ai_history') ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
   Future<void> loadMessages() async {
     _messages = await DatabaseHelper.instance.getAIMessages();
     notifyListeners();
@@ -18,9 +29,13 @@ class AIAssistantProvider extends ChangeNotifier {
   Future<void> sendMessage(String text, {String? sleepSummary}) async {
     if (text.trim().isEmpty) return;
 
+    final saveHistory = await _shouldSaveHistory();
+
     // 1. Add User Message
     final userMsg = AIMessageModel(text: text.trim(), isUser: true);
-    await DatabaseHelper.instance.insertAIMessage(userMsg);
+    if (saveHistory) {
+      await DatabaseHelper.instance.insertAIMessage(userMsg);
+    }
     _messages.add(userMsg);
     _isLoading = true;
     notifyListeners();
@@ -33,11 +48,27 @@ class AIAssistantProvider extends ChangeNotifier {
 
     // 3. Add AI Message
     final aiMsg = AIMessageModel(text: responseText, isUser: false);
-    await DatabaseHelper.instance.insertAIMessage(aiMsg);
+    if (saveHistory) {
+      await DatabaseHelper.instance.insertAIMessage(aiMsg);
+    }
     _messages.add(aiMsg);
 
     _isLoading = false;
     notifyListeners();
   }
-}
 
+  bool _isDisposed = false;
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_isDisposed) {
+      super.notifyListeners();
+    }
+  }
+}
