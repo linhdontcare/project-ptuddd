@@ -45,7 +45,9 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<String?> login(String email, String password) async {
     final trimmedEmail = email.trim().toLowerCase();
-    final foundUser = await DatabaseHelper.instance.getUserByEmail(trimmedEmail);
+    final foundUser = await DatabaseHelper.instance.getUserByEmail(
+      trimmedEmail,
+    );
     if (foundUser == null) {
       return 'Email chưa được đăng ký trong hệ thống.';
     }
@@ -53,6 +55,7 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedPwd = prefs.getString('$_keyPwdPrefix$trimmedEmail');
+      // Default seeded account password fallback is '123456'
       final expectedPwd =
           savedPwd ?? (trimmedEmail == 'mkl.deeptry@gmail.com' ? '123456' : '');
       if (expectedPwd.isNotEmpty && password != expectedPwd) {
@@ -78,7 +81,9 @@ class SettingsProvider extends ChangeNotifier {
     required String password,
   }) async {
     final trimmedEmail = email.trim().toLowerCase();
-    final existingUser = await DatabaseHelper.instance.getUserByEmail(trimmedEmail);
+    final existingUser = await DatabaseHelper.instance.getUserByEmail(
+      trimmedEmail,
+    );
     if (existingUser != null) {
       return 'Email này đã được sử dụng. Vui lòng dùng email khác.';
     }

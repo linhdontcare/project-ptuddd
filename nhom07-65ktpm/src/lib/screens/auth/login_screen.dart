@@ -31,18 +31,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isSubmitting = true);
     final error = await context.read<SettingsProvider>().login(
-          _emailController.text,
-          _passwordController.text,
-        );
+      _emailController.text,
+      _passwordController.text,
+    );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: AppTheme.softRed,
-        ),
+        SnackBar(content: Text(error), backgroundColor: AppTheme.softRed),
       );
     }
   }
@@ -208,4 +205,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

@@ -39,21 +39,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     setState(() => _isSubmitting = true);
     final error = await context.read<SettingsProvider>().register(
-          name: _nameController.text,
-          email: _emailController.text,
-          studentId: _studentIdController.text,
-          className: _classController.text,
-          password: _passwordController.text,
-        );
+      name: _nameController.text,
+      email: _emailController.text,
+      studentId: _studentIdController.text,
+      className: _classController.text,
+      password: _passwordController.text,
+    );
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: AppTheme.softRed,
-        ),
+        SnackBar(content: Text(error), backgroundColor: AppTheme.softRed),
       );
     } else {
       Navigator.pop(context);
@@ -241,12 +238,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         prefixIcon: Icon(icon),
         filled: true,
         fillColor: AppTheme.surfaceNavy,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
       validator: validator,
     );
   }
 }
-
