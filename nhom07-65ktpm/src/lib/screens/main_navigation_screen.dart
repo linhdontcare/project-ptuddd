@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/settings_provider.dart';
 import 'home/home_screen.dart';
 import 'sleep_management/sleep_goal_screen.dart';
 import 'power_nap/power_nap_screen.dart';
@@ -25,8 +28,47 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     });
   }
 
+  Future<void> _handleBackPressed() async {
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      Navigator.pop(context);
+      return;
+    }
+    if (_currentIndex != 0) {
+      setState(() {
+        _currentIndex = 0;
+      });
+      return;
+    }
+
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận thoát'),
+        content: const Text('Bạn có muốn thoát ứng dụng DCSleep không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Ở lại'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Thoát',
+              style: TextStyle(color: Color(0xFFF87171)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit == true) {
+      SystemNavigator.pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<SettingsProvider>().user;
     final screens = [
       HomeScreen(
         onNavigateTab: _onTabSelected,
@@ -38,35 +80,47 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       const AIAssistantScreen(),
     ];
 
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Color(0xFF1E293B)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Icon(Icons.bedtime, size: 40, color: Color(0xFF38BDF8)),
-                  SizedBox(height: 10),
-                  Text(
-                    'DCSleep App',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBackPressed();
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF1E1B4B), Color(0xFF1E293B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Icon(Icons.bedtime, size: 38, color: Color(0xFF38BDF8)),
+                    const SizedBox(height: 8),
+                    Text(
+                      user.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Nhóm 07 - Lớp 65KTPM',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                  ),
-                ],
+                    Text(
+                      '${user.studentId} • Lớp ${user.className}',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                    ),
+                  ],
+                ),
               ),
-            ),
             ListTile(
               leading: const Icon(Icons.dashboard_outlined),
               title: const Text('Trang chủ'),
@@ -164,6 +218,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             label: 'Trợ lý AI',
           ),
         ],
+      ),
       ),
     );
   }
