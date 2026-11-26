@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -25,6 +27,23 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _quoteIndex = 0;
+  Timer? _countdownTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
 
   final List<Map<String, String>> _sleepQuotes = const [
     {
@@ -355,8 +374,104 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            _buildNextSleepCountdownBanner(goal),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNextSleepCountdownBanner(dynamic goal) {
+    final now = DateTime.now();
+
+    DateTime nextBedtime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      goal.bedtimeHour,
+      goal.bedtimeMinute,
+    );
+    if (!nextBedtime.isAfter(now)) {
+      nextBedtime = nextBedtime.add(const Duration(days: 1));
+    }
+
+    DateTime nextWake = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      goal.wakeHour,
+      goal.wakeMinute,
+    );
+    if (!nextWake.isAfter(now)) {
+      nextWake = nextWake.add(const Duration(days: 1));
+    }
+
+    final diffBed = nextBedtime.difference(now);
+    final diffWake = nextWake.difference(now);
+    final isBedtimeNext = diffBed <= diffWake;
+    final remaining = isBedtimeNext ? diffBed : diffWake;
+
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes % 60;
+    final seconds = remaining.inSeconds % 60;
+
+    final targetTimeStr = isBedtimeNext
+        ? TimeUtils.formatTime(goal.bedtimeHour, goal.bedtimeMinute)
+        : TimeUtils.formatTime(goal.wakeHour, goal.wakeMinute);
+
+    final label = isBedtimeNext
+        ? 'Còn $hours giờ $minutes phút nữa đến giờ đi ngủ ($targetTimeStr)'
+        : 'Còn $hours giờ $minutes phút nữa đến giờ thức dậy ($targetTimeStr)';
+
+    final countdownBadge =
+        '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+
+    final accentColor = isBedtimeNext ? AppTheme.accentCyan : AppTheme.softAmber;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceNavy.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accentColor.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isBedtimeNext ? Icons.bedtime_rounded : Icons.alarm_rounded,
+            color: accentColor,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.textLight,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              countdownBadge,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: accentColor,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
