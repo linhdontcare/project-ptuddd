@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:dcsleep/data/models/ai_message_model.dart';
 import 'package:dcsleep/data/services/ai_service.dart';
-import 'package:dcsleep/data/services/offline_sleep_engine.dart';
 
 /// Dịch vụ gọi Gemini 2.5 Flash REST API (tách biệt hoàn toàn khỏi OfflineSleepEngine).
 /// Sử dụng header `x-goog-api-key`, hỗ trợ inject `http.Client` để kiểm thử bằng `MockClient`,
@@ -43,7 +42,6 @@ Bạn là Chuyên gia Tư vấn Giấc ngủ Khoa học của ứng dụng DCSle
     _apiKey = key.trim();
   }
 
-  @override
   @override
   bool get hasApiKey => _apiKey.trim().isNotEmpty;
 
@@ -185,23 +183,5 @@ Bạn là Chuyên gia Tư vấn Giấc ngủ Khoa học của ứng dụng DCSle
     }
 
     return deduped;
-  }
-
-  // Wrapper tương thích ngược tạm thời cho AIAssistantProvider cho tới khi hoàn tất Tác vụ 6.
-  Future<String> askSleepAssistant(
-    String userPrompt, {
-    String? sleepSummaryContext,
-  }) async {
-    try {
-      return await askAssistant(
-        prompt: userPrompt,
-        sleepContext: sleepSummaryContext,
-      );
-    } on AIServiceException {
-      return OfflineSleepEngine.getAdvice(
-        userPrompt,
-        sleepContext: sleepSummaryContext,
-      );
-    }
   }
 }
