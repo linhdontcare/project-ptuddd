@@ -33,9 +33,10 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
   void initState() {
     super.initState();
     _apiKeyManager = widget.apiKeyManager ?? ApiKeyManager();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      context.read<AIAssistantProvider>().loadMessages();
+      await context.read<AIAssistantProvider>().loadMessages();
+      if (mounted) _scrollToBottom();
     });
   }
 
@@ -51,7 +52,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     });
   }
 
-  void _handleSend([String? presetText]) {
+  Future<void> _handleSend([String? presetText]) async {
     final aiProv = context.read<AIAssistantProvider>();
     if (aiProv.isThinking) return;
 
@@ -69,11 +70,14 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
     final summary =
         'Mục tiêu: ${goalHours}h. Tỷ lệ tuân thủ 7 ngày: $compliance%. Thời lượng ngủ TB: ${avgHours}h.$latestPart';
 
-    aiProv.sendMessage(text, sleepSummary: summary);
     if (presetText == null) {
       _textController.clear();
     }
     _scrollToBottom();
+    await aiProv.sendMessage(text, sleepSummary: summary);
+    if (mounted) {
+      _scrollToBottom();
+    }
   }
 
   Future<void> _showApiKeyDialog() async {
