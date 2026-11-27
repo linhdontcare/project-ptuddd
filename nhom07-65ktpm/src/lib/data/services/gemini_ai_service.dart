@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:dcsleep/data/models/ai_message_model.dart';
 import 'package:dcsleep/data/services/ai_service.dart';
@@ -123,10 +124,18 @@ Bạn là Chuyên gia Tư vấn Giấc ngủ Khoa học của ứng dụng DCSle
       return text;
     } on AIServiceException {
       rethrow;
-    } on TimeoutException {
-      throw AIServiceException('Quá thời gian chờ phản hồi từ máy chủ AI');
+    } on TimeoutException catch (e) {
+      throw AIServiceException(
+        'Quá thời gian chờ phản hồi từ máy chủ AI',
+        cause: e,
+      );
+    } on SocketException catch (e) {
+      throw AIServiceException(
+        'Mất kết nối Internet: $e',
+        cause: e,
+      );
     } catch (e) {
-      throw AIServiceException('Lỗi kết nối dịch vụ AI: $e');
+      throw AIServiceException('Lỗi kết nối dịch vụ AI: $e', cause: e);
     }
   }
 
