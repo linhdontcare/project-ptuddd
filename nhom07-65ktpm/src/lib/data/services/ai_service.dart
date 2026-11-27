@@ -5,8 +5,9 @@ import 'package:dcsleep/data/models/ai_message_model.dart';
 class AIServiceException implements Exception {
   final String message;
   final int? statusCode;
+  final Object? cause;
 
-  AIServiceException(this.message, {this.statusCode});
+  AIServiceException(this.message, {this.statusCode, this.cause});
 
   @override
   String toString() => 'AIServiceException: $message (code: $statusCode)';

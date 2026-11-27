@@ -134,7 +134,19 @@ class AIAssistantProvider extends ChangeNotifier {
   }
 
   String _resolveOfflineReason(Object error) {
+    if (error is TimeoutException) {
+      return 'Quá thời gian phản hồi (> 10s)';
+    }
+    if (error is SocketException) {
+      return 'Mất kết nối Internet';
+    }
     if (error is AIServiceException) {
+      if (error.cause is TimeoutException) {
+        return 'Quá thời gian phản hồi (> 10s)';
+      }
+      if (error.cause is SocketException) {
+        return 'Mất kết nối Internet';
+      }
       if (error.statusCode == 429) {
         return 'Dịch vụ AI trực tuyến quá tải (HTTP 429)';
       }
@@ -142,15 +154,12 @@ class AIAssistantProvider extends ChangeNotifier {
         return 'Khóa API không hợp lệ hoặc hết hạn';
       }
       if (error.statusCode == null) {
-        return 'Chưa cấu hình API Key';
+        if (error.message.contains('Chưa cấu hình API Key')) {
+          return 'Chưa cấu hình API Key';
+        }
+        return 'Không thể kết nối dịch vụ AI trực tuyến';
       }
       return 'Dịch vụ AI trực tuyến tạm gián đoạn (HTTP ${error.statusCode})';
-    }
-    if (error is TimeoutException) {
-      return 'Quá thời gian phản hồi (> 10s)';
-    }
-    if (error is SocketException) {
-      return 'Mất kết nối Internet';
     }
     return 'Không thể kết nối dịch vụ AI trực tuyến';
   }
