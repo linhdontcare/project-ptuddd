@@ -348,14 +348,14 @@ Chạy ngay trên thiết bị trước khi gửi request tới API hoặc Offli
 
 | STT | Hạng mục kiểm tra | Tiêu chí đạt (Pass Criteria) | Trạng thái |
 | :-: | :--- | :--- | :-: |
-| 1 | Khởi chạy giao diện | Màn hình `AIAssistantScreen` tải mượt mà, hiển thị đúng theme màu Dark Navy & Cyan của dự án. | Chưa kiểm thử |
-| 2 | Gửi nhận tin nhắn | Nhập nội dung và nhấn gửi; tin nhắn người dùng hiển thị bên phải, tin nhắn bot hiển thị bên trái. | Chưa kiểm thử |
-| 3 | Tích hợp Gemini 2.5 Flash | Kết nối API thành công qua header `x-goog-api-key`, cấu hình `thinkingBudget: 0`, nhận phản hồi ổn định (< 5 giây trên môi trường mạng thông thường) và không đứt câu (< 1024 tokens). | Chưa kiểm thử |
-| 4 | Bộ nhớ hội thoại an toàn | Chuẩn hóa mảng `contents` (bắt đầu bằng `user`, xen kẽ `user`/`model`), hỏi câu nối tiếp mượt mà không gặp lỗi HTTP 400 Bad Request. | Chưa kiểm thử |
-| 5 | Dự phòng ngoại tuyến & Tự phục hồi | Khi ngắt mạng, phản hồi từ `OfflineSleepEngine` (kèm nhánh Default Fallback); khi có mạng lại, hệ thống tự động ẩn banner ngoại tuyến sau lượt gửi thành công. | Chưa kiểm thử |
-| 6 | An toàn 2 lớp & Tiếng Việt không dấu | Người dùng gõ "thuoc ngu" hay "thuốc ngủ", Local Pre-filter đều phát hiện và trả về cảnh báo từ chối kê đơn chuẩn. | Chưa kiểm thử |
-| 7 | Lưu trữ & Migration SQLite | Cột `is_offline` được thêm an toàn qua `onUpgrade`; đóng/mở lại app khôi phục đầy đủ tag `[Ngoại tuyến]`; nút "Xóa lịch sử" hoạt động chính xác. | Chưa kiểm thử |
-| 8 | Bảo mật khóa API | Khóa API không bị hardcode trong mã nguồn, không lộ trên URL query string và được lưu trữ an toàn qua `flutter_secure_storage`. | Chưa kiểm thử |
+| 1 | Khởi chạy giao diện | Màn hình `AIAssistantScreen` tải mượt mà, hiển thị đúng theme màu Dark Navy & Cyan của dự án. | Đạt (Đã kiểm thử) |
+| 2 | Gửi nhận tin nhắn | Nhập nội dung và nhấn gửi; tin nhắn người dùng hiển thị bên phải, tin nhắn bot hiển thị bên trái. | Đạt (Đã kiểm thử) |
+| 3 | Tích hợp Gemini 2.5 Flash | Kết nối API thành công qua header `x-goog-api-key`, cấu hình `thinkingBudget: 0`, nhận phản hồi ổn định (< 5 giây trên môi trường mạng thông thường) và không đứt câu (< 1024 tokens). | Đạt (Đã kiểm thử) |
+| 4 | Bộ nhớ hội thoại an toàn | Chuẩn hóa mảng `contents` (bắt đầu bằng `user`, xen kẽ `user`/`model`), hỏi câu nối tiếp mượt mà không gặp lỗi HTTP 400 Bad Request. | Đạt (Đã kiểm thử) |
+| 5 | Dự phòng ngoại tuyến & Tự phục hồi | Khi ngắt mạng, phản hồi từ `OfflineSleepEngine` (kèm nhánh Default Fallback); khi có mạng lại, hệ thống tự động ẩn banner ngoại tuyến sau lượt gửi thành công. | Đạt (Đã kiểm thử) |
+| 6 | An toàn 2 lớp & Tiếng Việt không dấu | Người dùng gõ "thuoc ngu" hay "thuốc ngủ", Local Pre-filter đều phát hiện và trả về cảnh báo từ chối kê đơn chuẩn. | Đạt (Đã kiểm thử) |
+| 7 | Lưu trữ & Migration SQLite | Cột `is_offline` được thêm an toàn qua `onUpgrade`; đóng/mở lại app khôi phục đầy đủ tag `[Ngoại tuyến]`; nút "Xóa lịch sử" hoạt động chính xác. | Đạt (Đã kiểm thử) |
+| 8 | Bảo mật khóa API | Khóa API không bị hardcode trong mã nguồn, không lộ trên URL query string và được lưu trữ an toàn qua `flutter_secure_storage`. | Đạt (Đã kiểm thử) |
 
 ---
 *Tài liệu đặc tả kỹ thuật này là căn cứ chính thức để triển khai, kiểm thử và nghiệm thu đồ án môn học cho thành viên Dương Quốc Vượng.*
