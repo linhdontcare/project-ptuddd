@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_constants.dart';
 import '../data/database/database_helper.dart';
 import '../data/models/nap_record_model.dart';
+import '../data/services/supabase_service.dart';
 
 enum NapStatus { notStarted, running, paused, completed }
 
@@ -108,6 +109,7 @@ class NapProvider extends ChangeNotifier {
       note: 'Hoàn thành giấc ngủ ngắn $_selectedPresetMinutes phút.',
     );
     await DatabaseHelper.instance.insertNapRecord(nap);
+    unawaited(SupabaseService.instance.syncNapRecord(nap));
     await loadHistory();
   }
 

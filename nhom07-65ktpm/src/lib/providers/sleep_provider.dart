@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/database/database_helper.dart';
 import '../data/models/sleep_goal_model.dart';
 import '../data/models/sleep_record_model.dart';
+import '../data/services/supabase_service.dart';
 
 class SleepProvider extends ChangeNotifier {
   SleepGoalModel _goal = SleepGoalModel(
@@ -68,6 +71,7 @@ class SleepProvider extends ChangeNotifier {
       isReminderEnabled: _goal.isReminderEnabled,
     );
     await DatabaseHelper.instance.updateSleepGoal(_goal);
+    unawaited(SupabaseService.instance.syncSleepGoal(_goal));
     notifyListeners();
   }
 
@@ -92,6 +96,7 @@ class SleepProvider extends ChangeNotifier {
       createdAt: DateTime.now(),
     );
     await DatabaseHelper.instance.insertSleepRecord(record);
+    unawaited(SupabaseService.instance.syncSleepRecord(record));
     await loadData();
   }
 
