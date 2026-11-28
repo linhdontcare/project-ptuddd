@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/constants/supabase_config.dart';
 import 'data/database/database_factory_initializer_stub.dart'
     if (dart.library.io)
       'data/database/database_factory_initializer_io.dart'
     as database_factory_initializer;
+import 'data/services/supabase_service.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/sleep_provider.dart';
 import 'providers/nap_provider.dart';
@@ -16,6 +19,15 @@ import 'screens/main_navigation_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   database_factory_initializer.initializeDatabaseFactory();
+  try {
+    await Supabase.initialize(
+      url: SupabaseConfig.supabaseUrl,
+      publishableKey: SupabaseConfig.supabaseAnonKey,
+    );
+    SupabaseService.instance.markInitialized();
+  } catch (e) {
+    debugPrint('[Supabase] Init fallback (offline mode): $e');
+  }
   runApp(const DCSleepApp());
 }
 

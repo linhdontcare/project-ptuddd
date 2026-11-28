@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database/database_helper.dart';
 import '../data/models/reminder_model.dart';
 import '../data/models/user_model.dart';
+import '../data/services/supabase_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const String _keyIsLoggedIn = 'is_logged_in';
@@ -51,7 +52,17 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<String?> login(String email, String password) async {
     final trimmedEmail = email.trim().toLowerCase();
-    final foundUser = await DatabaseHelper.instance.getUserByEmail(trimmedEmail);
+    var foundUser = await DatabaseHelper.instance.getUserByEmail(trimmedEmail);
+    String? remotePwd;
+    if (foundUser == null) {
+      // Thử tìm tài khoản trên Supabase nếu chưa có trong SQLite cục bộ
+      foundUser = await SupabaseService.instance.fetchUserByEmail(trimmedEmail);
+      if (foundUser != null) {
+        await DatabaseHelper.instance.registerUser(foundUser);
+      }
+    }
+    remotePwd = await SupabaseService.instance.fetchUserPassword(trimmedEmail);
+
     if (foundUser == null) {
       return 'Email chưa được đăng ký trong hệ thống.';
     }
@@ -60,7 +71,7 @@ class SettingsProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final savedPwd = prefs.getString('$_keyPwdPrefix$trimmedEmail');
       final expectedPwd =
-          savedPwd ?? (trimmedEmail == 'mkl.deeptry@gmail.com' ? '123456' : '');
+          savedPwd ?? remotePwd ?? (trimmedEmail == 'mkl.deeptry@gmail.com' ? '123456' : '');
       if (expectedPwd.isNotEmpty && password != expectedPwd) {
         return 'Mật khẩu không chính xác.';
       }
@@ -84,8 +95,9 @@ class SettingsProvider extends ChangeNotifier {
     required String password,
   }) async {
     final trimmedEmail = email.trim().toLowerCase();
-    final existingUser = await DatabaseHelper.instance.getUserByEmail(trimmedEmail);
-    if (existingUser != null) {
+    final existingLocal = await DatabaseHelper.instance.getUserByEmail(trimmedEmail);
+    final existingRemote = await SupabaseService.instance.fetchUserByEmail(trimmedEmail);
+    if (existingLocal != null || existingRemote != null) {
       return 'Email này đã được sử dụng. Vui lòng dùng email khác.';
     }
 
@@ -97,6 +109,7 @@ class SettingsProvider extends ChangeNotifier {
     );
 
     await DatabaseHelper.instance.registerUser(newUser);
+    await SupabaseService.instance.upsertUser(newUser, password: password);
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -127,6 +140,7 @@ class SettingsProvider extends ChangeNotifier {
       createdAt: _user.createdAt,
     );
     await DatabaseHelper.instance.updateUser(updated);
+    await SupabaseService.instance.updateUserProfile(updated);
     _user = updated;
     notifyListeners();
   }
