@@ -74,6 +74,7 @@ class NotificationService {
             >();
         _isPermissionGranted =
             await androidPlugin?.requestNotificationsPermission() ?? false;
+        await androidPlugin?.requestExactAlarmsPermission();
         return _isPermissionGranted;
       }
 
@@ -97,8 +98,10 @@ class NotificationService {
           android: AndroidNotificationDetails(
             'dcsleep_reminders',
             'Nhắc nhở giấc ngủ',
-            importance: Importance.high,
+            importance: Importance.max,
             priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
           ),
           windows: WindowsNotificationDetails(),
           web: WebNotificationDetails(),

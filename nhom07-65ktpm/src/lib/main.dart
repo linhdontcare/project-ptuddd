@@ -21,6 +21,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   database_factory_initializer.initializeDatabaseFactory();
   await NotificationService.instance.initialize();
+  await NotificationService.instance.requestPermission();
   try {
     await Supabase.initialize(
       url: SupabaseConfig.supabaseUrl,
