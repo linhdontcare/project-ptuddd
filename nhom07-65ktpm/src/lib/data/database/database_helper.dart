@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
+
 import '../../core/constants/app_constants.dart';
 import '../models/user_model.dart';
 import '../models/sleep_goal_model.dart';
@@ -70,7 +71,9 @@ class DatabaseHelper {
   @visibleForTesting
   Future<void> onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      await db.execute('ALTER TABLE ${AppConstants.tableAIConversations} ADD COLUMN is_offline INTEGER NOT NULL DEFAULT 0;');
+      await db.execute(
+        'ALTER TABLE ${AppConstants.tableAIConversations} ADD COLUMN is_offline INTEGER NOT NULL DEFAULT 0;',
+      );
     }
   }
 
@@ -181,15 +184,30 @@ class DatabaseHelper {
     // Seed default reminders
     await db.insert(
       AppConstants.tableReminders,
-      ReminderModel(title: 'Chuẩn bị đi ngủ (tắt điện thoại)', hour: 22, minute: 30, type: 'prepare_sleep').toMap(),
+      ReminderModel(
+        title: 'Chuẩn bị đi ngủ (tắt điện thoại)',
+        hour: 22,
+        minute: 30,
+        type: 'prepare_sleep',
+      ).toMap(),
     );
     await db.insert(
       AppConstants.tableReminders,
-      ReminderModel(title: 'Đến giờ ngủ mục tiêu', hour: 23, minute: 0, type: 'bedtime').toMap(),
+      ReminderModel(
+        title: 'Đến giờ ngủ mục tiêu',
+        hour: 23,
+        minute: 0,
+        type: 'bedtime',
+      ).toMap(),
     );
     await db.insert(
       AppConstants.tableReminders,
-      ReminderModel(title: 'Thức dậy đón ngày mới', hour: 7, minute: 0, type: 'wakeup').toMap(),
+      ReminderModel(
+        title: 'Thức dậy đón ngày mới',
+        hour: 7,
+        minute: 0,
+        type: 'wakeup',
+      ).toMap(),
     );
 
     // Seed some mock sleep records for recent 7 days so charts render nicely
@@ -291,9 +309,24 @@ class DatabaseHelper {
     final db = await database;
     if (db == null) {
       return [
-        ReminderModel(title: 'Chuẩn bị đi ngủ (tắt điện thoại)', hour: 22, minute: 30, type: 'prepare_sleep'),
-        ReminderModel(title: 'Đến giờ ngủ mục tiêu', hour: 23, minute: 0, type: 'bedtime'),
-        ReminderModel(title: 'Thức dậy đón ngày mới', hour: 7, minute: 0, type: 'wakeup'),
+        ReminderModel(
+          title: 'Chuẩn bị đi ngủ (tắt điện thoại)',
+          hour: 22,
+          minute: 30,
+          type: 'prepare_sleep',
+        ),
+        ReminderModel(
+          title: 'Đến giờ ngủ mục tiêu',
+          hour: 23,
+          minute: 0,
+          type: 'bedtime',
+        ),
+        ReminderModel(
+          title: 'Thức dậy đón ngày mới',
+          hour: 7,
+          minute: 0,
+          type: 'wakeup',
+        ),
       ];
     }
     final maps = await db.query(AppConstants.tableReminders);
@@ -423,5 +456,141 @@ class DatabaseHelper {
     await db.delete(AppConstants.tableSleepRecords);
     await db.delete(AppConstants.tableNapRecords);
     await db.delete(AppConstants.tableAIConversations);
+  }
+
+  // Lấy danh sách người dùng
+  Future<List<UserModel>> getAllUsers() async {
+    final db = await database;
+    if (db == null) return _fallbackUsers;
+
+    final maps = await db.query(AppConstants.tableUsers);
+    return maps.map((e) => UserModel.fromMap(e)).toList();
+  }
+
+  // Xóa người dùng theo ID
+  Future<int> deleteUser(int id) async {
+    final db = await database;
+    if (db == null) return 0;
+
+    return await db.delete(
+      AppConstants.tableUsers,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // Thêm mục tiêu ngủ
+  Future<int> insertSleepGoal(SleepGoalModel goal) async {
+    final db = await database;
+    if (db == null) return 0;
+
+    return await db.insert(AppConstants.tableSleepGoals, goal.toMap());
+  }
+
+  // Xóa mục tiêu ngủ
+  Future<int> deleteSleepGoal(int id) async {
+    final db = await database;
+    if (db == null) return 0;
+
+    return await db.delete(
+      AppConstants.tableSleepGoals,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // Cập nhật nhật ký ngủ
+  Future<int> updateSleepRecord(SleepRecordModel record) async {
+    final db = await database;
+    if (db == null || record.id == null) return 0;
+
+    return await db.update(
+      AppConstants.tableSleepRecords,
+      record.toMap(),
+      where: 'id = ?',
+      whereArgs: [record.id],
+    );
+  }
+
+  // Xóa nhật ký ngủ
+  Future<int> deleteSleepRecord(int id) async {
+    final db = await database;
+    if (db == null) return 0;
+
+    return await db.delete(
+      AppConstants.tableSleepRecords,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // Cập nhật nhật ký ngủ trưa
+  Future<int> updateNapRecord(NapRecordModel nap) async {
+    final db = await database;
+    if (db == null || nap.id == null) return 0;
+
+    return await db.update(
+      AppConstants.tableNapRecords,
+      nap.toMap(),
+      where: 'id = ?',
+      whereArgs: [nap.id],
+    );
+  }
+
+  // Xóa nhật ký ngủ trưa
+  Future<int> deleteNapRecord(int id) async {
+    final db = await database;
+    if (db == null) return 0;
+
+    return await db.delete(
+      AppConstants.tableNapRecords,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // Thêm nhắc nhở
+  Future<int> insertReminder(ReminderModel reminder) async {
+    final db = await database;
+    if (db == null) return 0;
+
+    return await db.insert(AppConstants.tableReminders, reminder.toMap());
+  }
+
+  // Xóa nhắc nhở
+  Future<int> deleteReminder(int id) async {
+    final db = await database;
+    if (db == null) return 0;
+
+    return await db.delete(
+      AppConstants.tableReminders,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // Cập nhật tin nhắn
+  Future<int> updateAIMessage(AIMessageModel message) async {
+    final db = await database;
+    if (db == null || message.id == null) return 0;
+
+    return await db.update(
+      AppConstants.tableAIConversations,
+      message.toMap(),
+      where: 'id = ?',
+      whereArgs: [message.id],
+    );
+  }
+
+  // Xóa một tin nhắn theo ID
+  Future<int> deleteAIMessage(int id) async {
+    final db = await database;
+    if (db == null) return 0;
+
+    return await db.delete(
+      AppConstants.tableAIConversations,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 }

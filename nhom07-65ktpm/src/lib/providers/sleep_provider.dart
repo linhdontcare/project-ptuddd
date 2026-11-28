@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../data/database/database_helper.dart';
 import '../data/models/sleep_goal_model.dart';
 import '../data/models/sleep_record_model.dart';
@@ -18,7 +19,8 @@ class SleepProvider extends ChangeNotifier {
   List<SleepRecordModel> get records => _records;
   bool get isLoading => _isLoading;
 
-  SleepRecordModel? get latestRecord => _records.isNotEmpty ? _records.first : null;
+  SleepRecordModel? get latestRecord =>
+      _records.isNotEmpty ? _records.first : null;
 
   // Discipline & Compliance Rate (%)
   double get complianceRate {
@@ -92,5 +94,18 @@ class SleepProvider extends ChangeNotifier {
     await DatabaseHelper.instance.insertSleepRecord(record);
     await loadData();
   }
-}
 
+  // Cập nhật nhật ký giấc ngủ
+  Future<void> updateSleepRecord(SleepRecordModel record) async {
+    if (record.id == null) return;
+
+    await DatabaseHelper.instance.updateSleepRecord(record);
+    await loadData();
+  }
+
+  // Xóa nhật ký giấc ngủ
+  Future<void> deleteSleepRecord(int id) async {
+    await DatabaseHelper.instance.deleteSleepRecord(id);
+    await loadData();
+  }
+}
