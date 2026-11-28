@@ -245,26 +245,45 @@ class DatabaseHelper {
   }
 
   // --- Sleep Goal CRUD ---
-  Future<SleepGoalModel> getSleepGoal() async {
+  Future<List<SleepGoalModel>> getSleepGoals() async {
     final db = await database;
     if (db != null) {
-      final maps = await db.query(AppConstants.tableSleepGoals, limit: 1);
+      final maps = await db.query(
+        AppConstants.tableSleepGoals,
+        orderBy: 'id ASC',
+      );
       if (maps.isNotEmpty) {
-        return SleepGoalModel.fromMap(maps.first);
+        return maps.map((e) => SleepGoalModel.fromMap(e)).toList();
       }
     }
-    return SleepGoalModel(
-      bedtimeHour: 23,
-      bedtimeMinute: 0,
-      wakeHour: 7,
-      wakeMinute: 0,
-      targetDurationHours: 8.0,
-    );
+    return [
+      SleepGoalModel(
+        bedtimeHour: 23,
+        bedtimeMinute: 0,
+        wakeHour: 7,
+        wakeMinute: 0,
+        targetDurationHours: 8.0,
+      ),
+    ];
+  }
+
+  Future<SleepGoalModel> getSleepGoal() async {
+    final goals = await getSleepGoals();
+    return goals.first;
   }
 
   Future<void> updateSleepGoal(SleepGoalModel goal) async {
     final db = await database;
     if (db == null) return;
+    if (goal.id != null) {
+      await db.update(
+        AppConstants.tableSleepGoals,
+        goal.toMap(),
+        where: 'id = ?',
+        whereArgs: [goal.id],
+      );
+      return;
+    }
     await db.delete(AppConstants.tableSleepGoals);
     await db.insert(AppConstants.tableSleepGoals, goal.toMap());
   }

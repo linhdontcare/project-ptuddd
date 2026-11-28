@@ -16,11 +16,35 @@ class SleepProvider extends ChangeNotifier {
     wakeMinute: 0,
     targetDurationHours: 8.0,
   );
+  List<SleepGoalModel> _goals = [];
   List<SleepRecordModel> _records = [];
   bool _isLoading = true;
   bool _hasSyncedInitialReminder = false;
 
-  SleepGoalModel get goal => _goal;
+  static const Map<int, String> _weekdayLabels = {
+    DateTime.monday: 'T2',
+    DateTime.tuesday: 'T3',
+    DateTime.wednesday: 'T4',
+    DateTime.thursday: 'T5',
+    DateTime.friday: 'T6',
+    DateTime.saturday: 'T7',
+    DateTime.sunday: 'CN',
+  };
+
+  SleepGoalModel get goal {
+    if (_goals.isEmpty) return _goal;
+    final todayLabel = _weekdayLabels[DateTime.now().weekday];
+    if (todayLabel != null) {
+      for (final g in _goals) {
+        final days = g.activeDays.split(',').map((d) => d.trim()).toSet();
+        if (days.contains(todayLabel)) return g;
+      }
+    }
+    return _goals.first;
+  }
+
+  List<SleepGoalModel> get goals =>
+      _goals.isEmpty ? [_goal] : List.unmodifiable(_goals);
   List<SleepRecordModel> get records => _records;
   bool get isLoading => _isLoading;
 
@@ -47,12 +71,13 @@ class SleepProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    _goal = await DatabaseHelper.instance.getSleepGoal();
+    _goals = await DatabaseHelper.instance.getSleepGoals();
+    _goal = _goals.first;
     _records = await DatabaseHelper.instance.getSleepRecords();
 
     if (!_hasSyncedInitialReminder) {
       _hasSyncedInitialReminder = true;
-      if (_goal.isReminderEnabled) {
+      if (_goals.any((g) => g.isReminderEnabled)) {
         try {
           await _syncBedtimeReminder();
         } catch (e) {
@@ -68,65 +93,121 @@ class SleepProvider extends ChangeNotifier {
   }
 
   Future<void> updateGoal({
+    int? goalId,
     required int bedtimeHour,
     required int bedtimeMinute,
     required int wakeHour,
     required int wakeMinute,
     required double targetDurationHours,
     required String activeDays,
+    bool? isReminderEnabled,
   }) async {
-    _goal = SleepGoalModel(
-      id: _goal.id,
+    final targetId = goalId ?? goal.id;
+    final existing = _goals.firstWhere(
+      (g) => g.id == targetId,
+      orElse: () => goal,
+    );
+    final updated = SleepGoalModel(
+      id: targetId,
       bedtimeHour: bedtimeHour,
       bedtimeMinute: bedtimeMinute,
       wakeHour: wakeHour,
       wakeMinute: wakeMinute,
       targetDurationHours: targetDurationHours,
       activeDays: activeDays,
-      isReminderEnabled: _goal.isReminderEnabled,
+      isReminderEnabled: isReminderEnabled ?? existing.isReminderEnabled,
     );
-    await DatabaseHelper.instance.updateSleepGoal(_goal);
-    unawaited(SupabaseService.instance.syncSleepGoal(_goal));
+    await DatabaseHelper.instance.updateSleepGoal(updated);
+    _goals = await DatabaseHelper.instance.getSleepGoals();
+    _goal = _goals.first;
+    unawaited(SupabaseService.instance.syncSleepGoal(updated));
     await _syncBedtimeReminder();
     notifyListeners();
   }
 
-  Future<void> setReminderEnabled(bool value) async {
-    _goal = SleepGoalModel(
-      id: _goal.id,
-      bedtimeHour: _goal.bedtimeHour,
-      bedtimeMinute: _goal.bedtimeMinute,
-      wakeHour: _goal.wakeHour,
-      wakeMinute: _goal.wakeMinute,
-      targetDurationHours: _goal.targetDurationHours,
-      activeDays: _goal.activeDays,
+  Future<void> addGoal({
+    required int bedtimeHour,
+    required int bedtimeMinute,
+    required int wakeHour,
+    required int wakeMinute,
+    required double targetDurationHours,
+    required String activeDays,
+    bool isReminderEnabled = true,
+  }) async {
+    final newGoal = SleepGoalModel(
+      bedtimeHour: bedtimeHour,
+      bedtimeMinute: bedtimeMinute,
+      wakeHour: wakeHour,
+      wakeMinute: wakeMinute,
+      targetDurationHours: targetDurationHours,
+      activeDays: activeDays,
+      isReminderEnabled: isReminderEnabled,
+    );
+    await DatabaseHelper.instance.insertSleepGoal(newGoal);
+    _goals = await DatabaseHelper.instance.getSleepGoals();
+    _goal = _goals.first;
+    unawaited(SupabaseService.instance.syncSleepGoal(newGoal));
+    await _syncBedtimeReminder();
+    notifyListeners();
+  }
+
+  Future<void> deleteGoal(int id) async {
+    if (_goals.length <= 1) return;
+    await DatabaseHelper.instance.deleteSleepGoal(id);
+    _goals = await DatabaseHelper.instance.getSleepGoals();
+    _goal = _goals.first;
+    await _syncBedtimeReminder();
+    notifyListeners();
+  }
+
+  Future<void> setReminderEnabled(bool value, {int? goalId}) async {
+    final targetId = goalId ?? goal.id;
+    final existing = _goals.firstWhere(
+      (g) => g.id == targetId,
+      orElse: () => goal,
+    );
+    final updated = SleepGoalModel(
+      id: existing.id,
+      bedtimeHour: existing.bedtimeHour,
+      bedtimeMinute: existing.bedtimeMinute,
+      wakeHour: existing.wakeHour,
+      wakeMinute: existing.wakeMinute,
+      targetDurationHours: existing.targetDurationHours,
+      activeDays: existing.activeDays,
       isReminderEnabled: value,
     );
-    await DatabaseHelper.instance.updateSleepGoal(_goal);
-    unawaited(SupabaseService.instance.syncSleepGoal(_goal));
+    await DatabaseHelper.instance.updateSleepGoal(updated);
+    _goals = await DatabaseHelper.instance.getSleepGoals();
+    _goal = _goals.first;
+    unawaited(SupabaseService.instance.syncSleepGoal(updated));
     await _syncBedtimeReminder();
     notifyListeners();
   }
 
   Future<void> _syncBedtimeReminder() async {
-    if (_goal.isReminderEnabled) {
+    await NotificationService.instance.cancelBedtimeReminders();
+    await NotificationService.instance.cancelWakeupReminders();
+
+    final listToSchedule = _goals.isNotEmpty ? _goals : [_goal];
+    for (int i = 0; i < listToSchedule.length && i < 10; i++) {
+      final g = listToSchedule[i];
+      if (!g.isReminderEnabled) continue;
       await NotificationService.instance.scheduleBedtimeReminder(
-        hour: _goal.bedtimeHour,
-        minute: _goal.bedtimeMinute,
+        hour: g.bedtimeHour,
+        minute: g.bedtimeMinute,
         title: 'Đến giờ đi ngủ rồi',
         body: 'Đã đến giờ đi ngủ theo lịch bạn đặt. Chuẩn bị nghỉ thôi!',
-        activeDays: _goal.activeDays,
+        activeDays: g.activeDays,
+        slotIndex: i,
       );
       await NotificationService.instance.scheduleWakeupReminder(
-        hour: _goal.wakeHour,
-        minute: _goal.wakeMinute,
+        hour: g.wakeHour,
+        minute: g.wakeMinute,
         title: 'Đã đến giờ thức dậy!',
         body: 'Chào buổi sáng! Đã đến giờ thức dậy đón ngày mới rồi!',
-        activeDays: _goal.activeDays,
+        activeDays: g.activeDays,
+        slotIndex: i,
       );
-    } else {
-      await NotificationService.instance.cancelBedtimeReminders();
-      await NotificationService.instance.cancelWakeupReminders();
     }
   }
 

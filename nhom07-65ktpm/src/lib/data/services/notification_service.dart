@@ -135,11 +135,21 @@ class NotificationService {
     }
   }
 
-  Future<void> cancelBedtimeReminders() =>
-      _cancelReminderRange(100, 107, 'nhắc giờ đi ngủ');
+  Future<void> cancelBedtimeReminders() async {
+    await _cancelReminderRange(100, 107, 'nhắc giờ đi ngủ');
+    for (int slot = 1; slot < 10; slot++) {
+      final base = 1000 + slot * 10;
+      await _cancelReminderRange(base, base + 7, 'nhắc giờ đi ngủ');
+    }
+  }
 
-  Future<void> cancelWakeupReminders() =>
-      _cancelReminderRange(200, 207, 'nhắc giờ thức dậy');
+  Future<void> cancelWakeupReminders() async {
+    await _cancelReminderRange(200, 207, 'nhắc giờ thức dậy');
+    for (int slot = 1; slot < 10; slot++) {
+      final base = 2000 + slot * 10;
+      await _cancelReminderRange(base, base + 7, 'nhắc giờ thức dậy');
+    }
+  }
 
   Future<void> scheduleBedtimeReminder({
     required int hour,
@@ -147,9 +157,10 @@ class NotificationService {
     required String title,
     required String body,
     String? activeDays,
+    int slotIndex = 0,
   }) =>
       _scheduleWeeklyReminder(
-        baseId: 100,
+        baseId: slotIndex == 0 ? 100 : 1000 + slotIndex * 10,
         hour: hour,
         minute: minute,
         title: title,
@@ -164,9 +175,10 @@ class NotificationService {
     required String title,
     required String body,
     String? activeDays,
+    int slotIndex = 0,
   }) =>
       _scheduleWeeklyReminder(
-        baseId: 200,
+        baseId: slotIndex == 0 ? 200 : 2000 + slotIndex * 10,
         hour: hour,
         minute: minute,
         title: title,

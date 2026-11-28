@@ -52,7 +52,10 @@ void main() {
     await tester.pump();
 
     for (final day in ['T3', 'T5', 'T7']) {
-      await tester.tap(find.widgetWithText(FilterChip, day));
+      final chip = find.widgetWithText(FilterChip, day);
+      await tester.ensureVisible(chip);
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
     }

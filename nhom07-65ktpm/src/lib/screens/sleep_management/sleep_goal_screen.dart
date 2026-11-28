@@ -28,29 +28,49 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
   late TimeOfDay _wakeTime;
   late double _targetDuration;
   late Set<String> _activeDays;
+  late bool _isReminderEnabled;
+  int? _editingGoalId;
+  bool _isCreatingNew = false;
   SleepGoalModel? _observedGoal;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final goal = context.watch<SleepProvider>().goal;
-    if (identical(goal, _observedGoal)) return;
+    if (_isCreatingNew) return;
+    final sleepProv = context.watch<SleepProvider>();
+    final goals = sleepProv.goals;
+    final targetGoal = _editingGoalId != null
+        ? goals.firstWhere(
+            (g) => g.id == _editingGoalId,
+            orElse: () => sleepProv.goal,
+          )
+        : sleepProv.goal;
+    if (identical(targetGoal, _observedGoal)) return;
 
     final previousGoal = _observedGoal;
-    _observedGoal = goal;
+    _observedGoal = targetGoal;
     if (previousGoal != null &&
-        previousGoal.bedtimeHour == goal.bedtimeHour &&
-        previousGoal.bedtimeMinute == goal.bedtimeMinute &&
-        previousGoal.wakeHour == goal.wakeHour &&
-        previousGoal.wakeMinute == goal.wakeMinute &&
-        previousGoal.targetDurationHours == goal.targetDurationHours &&
-        previousGoal.activeDays == goal.activeDays) {
+        previousGoal.id == targetGoal.id &&
+        previousGoal.bedtimeHour == targetGoal.bedtimeHour &&
+        previousGoal.bedtimeMinute == targetGoal.bedtimeMinute &&
+        previousGoal.wakeHour == targetGoal.wakeHour &&
+        previousGoal.wakeMinute == targetGoal.wakeMinute &&
+        previousGoal.targetDurationHours == targetGoal.targetDurationHours &&
+        previousGoal.activeDays == targetGoal.activeDays &&
+        previousGoal.isReminderEnabled == targetGoal.isReminderEnabled) {
       return;
     }
 
+    _loadGoalIntoForm(targetGoal);
+  }
+
+  void _loadGoalIntoForm(SleepGoalModel goal) {
+    _editingGoalId = goal.id;
+    _isCreatingNew = false;
     _bedtime = TimeOfDay(hour: goal.bedtimeHour, minute: goal.bedtimeMinute);
     _wakeTime = TimeOfDay(hour: goal.wakeHour, minute: goal.wakeMinute);
     _targetDuration = goal.targetDurationHours;
+    _isReminderEnabled = goal.isReminderEnabled;
     _activeDays = goal.activeDays
         .split(',')
         .map((day) => day.trim())
@@ -59,6 +79,26 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
     if (_activeDays.isEmpty) {
       _activeDays.addAll(_weekdays);
     }
+  }
+
+  void _startNewGoal() {
+    final goals = context.read<SleepProvider>().goals;
+    final usedDays = goals
+        .expand((g) => g.activeDays.split(',').map((d) => d.trim()))
+        .toSet();
+    final remainingDays = _weekdays.where((d) => !usedDays.contains(d)).toSet();
+
+    setState(() {
+      _isCreatingNew = true;
+      _editingGoalId = null;
+      _bedtime = const TimeOfDay(hour: 23, minute: 30);
+      _wakeTime = const TimeOfDay(hour: 7, minute: 30);
+      _recalculateDuration();
+      _isReminderEnabled = true;
+      _activeDays = remainingDays.isNotEmpty
+          ? remainingDays
+          : {'T7', 'CN'};
+    });
   }
 
   Future<void> _selectBedtime() async {
@@ -116,19 +156,49 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
   }
 
   Future<void> _saveGoal() async {
-    await context.read<SleepProvider>().updateGoal(
-      bedtimeHour: _bedtime.hour,
-      bedtimeMinute: _bedtime.minute,
-      wakeHour: _wakeTime.hour,
-      wakeMinute: _wakeTime.minute,
-      targetDurationHours: _targetDuration,
-      activeDays: _weekdays.where(_activeDays.contains).join(','),
-    );
+    final sleepProv = context.read<SleepProvider>();
+    final daysStr = _weekdays.where(_activeDays.contains).join(',');
+
+    if (_isCreatingNew) {
+      await sleepProv.addGoal(
+        bedtimeHour: _bedtime.hour,
+        bedtimeMinute: _bedtime.minute,
+        wakeHour: _wakeTime.hour,
+        wakeMinute: _wakeTime.minute,
+        targetDurationHours: _targetDuration,
+        activeDays: daysStr,
+        isReminderEnabled: _isReminderEnabled,
+      );
+      if (mounted) {
+        setState(() {
+          _isCreatingNew = false;
+          _observedGoal = null;
+          if (sleepProv.goals.isNotEmpty) {
+            _loadGoalIntoForm(sleepProv.goals.last);
+          }
+        });
+      }
+    } else {
+      await sleepProv.updateGoal(
+        goalId: _editingGoalId,
+        bedtimeHour: _bedtime.hour,
+        bedtimeMinute: _bedtime.minute,
+        wakeHour: _wakeTime.hour,
+        wakeMinute: _wakeTime.minute,
+        targetDurationHours: _targetDuration,
+        activeDays: daysStr,
+        isReminderEnabled: _isReminderEnabled,
+      );
+    }
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã cập nhật mục tiêu giấc ngủ thành công!'),
+        SnackBar(
+          content: Text(
+            _isCreatingNew
+                ? 'Đã thêm lịch mục tiêu giấc ngủ mới!'
+                : 'Đã cập nhật mục tiêu giấc ngủ thành công!',
+          ),
         ),
       );
       if (Navigator.of(context).canPop()) {
@@ -138,7 +208,12 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
   }
 
   Future<void> _setReminderEnabled(bool value) async {
-    await context.read<SleepProvider>().setReminderEnabled(value);
+    setState(() => _isReminderEnabled = value);
+    if (_isCreatingNew) return;
+    await context.read<SleepProvider>().setReminderEnabled(
+      value,
+      goalId: _editingGoalId,
+    );
 
     if (mounted) {
       ScaffoldMessenger.of(context)
@@ -166,7 +241,9 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
               'Xây dựng lịch ngủ cố định giúp đồng hồ sinh học cơ thể ổn định và thức dậy tràn đầy năng lượng.',
               style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            _buildGoalsSelectorSection(context),
+            const SizedBox(height: 16),
             // Select Bedtime
             _buildTimePickerCard(
               title: 'Giờ đi ngủ mục tiêu',
@@ -326,21 +403,151 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
             ),
             SwitchListTile(
               title: const Text('Nhắc giờ ngủ & thức dậy'),
-              value: context.watch<SleepProvider>().goal.isReminderEnabled,
+              value: _isReminderEnabled,
               onChanged: _setReminderEnabled,
             ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Lưu Mục Tiêu Giấc Ngủ'),
+                icon: Icon(
+                  _isCreatingNew
+                      ? Icons.add_circle_outline
+                      : Icons.check_circle_outline,
+                ),
+                label: Text(
+                  _isCreatingNew
+                      ? 'Thêm Lịch Ngủ Mới'
+                      : 'Lưu Mục Tiêu Giấc Ngủ',
+                ),
                 onPressed: _saveGoal,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGoalsSelectorSection(BuildContext context) {
+    final sleepProv = context.watch<SleepProvider>();
+    final goals = sleepProv.goals;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Lịch ngủ đã đặt (${goals.length})',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            TextButton.icon(
+              onPressed: _startNewGoal,
+              icon: const Icon(Icons.add, size: 18, color: AppTheme.accentCyan),
+              label: const Text(
+                'Thêm lịch mới',
+                style: TextStyle(color: AppTheme.accentCyan, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ...goals.map((g) {
+          final isSelected = !_isCreatingNew && g.id == _editingGoalId;
+          final bedStr = TimeUtils.formatTime(g.bedtimeHour, g.bedtimeMinute);
+          final wakeStr = TimeUtils.formatTime(g.wakeHour, g.wakeMinute);
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: isSelected
+                    ? AppTheme.accentCyan
+                    : Colors.transparent,
+                width: 1.4,
+              ),
+            ),
+            child: ListTile(
+              dense: true,
+              leading: Icon(
+                Icons.schedule_rounded,
+                color: isSelected ? AppTheme.accentCyan : AppTheme.textMuted,
+              ),
+              title: Text(
+                '$bedStr → $wakeStr (${TimeUtils.formatDuration(g.targetDurationHours)})',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              subtitle: Text(
+                g.activeDays.split(',').join(' • '),
+                style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+              ),
+              trailing: goals.length > 1 && g.id != null
+                  ? IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: AppTheme.softRed,
+                        size: 20,
+                      ),
+                      tooltip: 'Xóa lịch này',
+                      onPressed: () async {
+                        await sleepProv.deleteGoal(g.id!);
+                        if (mounted) {
+                          setState(() {
+                            _isCreatingNew = false;
+                            _observedGoal = null;
+                            _loadGoalIntoForm(sleepProv.goal);
+                          });
+                        }
+                      },
+                    )
+                  : null,
+              onTap: () => setState(() => _loadGoalIntoForm(g)),
+            ),
+          );
+        }),
+        if (_isCreatingNew)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.accentIndigo.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppTheme.accentCyan.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Đang tạo lịch ngủ mới',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.accentCyan,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => _loadGoalIntoForm(sleepProv.goal)),
+                  child: const Text(
+                    'Hủy',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textMuted,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
