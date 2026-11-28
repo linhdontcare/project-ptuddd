@@ -117,6 +117,10 @@ class SleepProvider extends ChangeNotifier {
       activeDays: activeDays,
       isReminderEnabled: isReminderEnabled ?? existing.isReminderEnabled,
     );
+    await _deduplicateDaysAcrossOtherGoals(
+      selectedDaysStr: activeDays,
+      excludeGoalId: targetId,
+    );
     await DatabaseHelper.instance.updateSleepGoal(updated);
     _goals = await DatabaseHelper.instance.getSleepGoals();
     _goal = _goals.first;
@@ -134,6 +138,7 @@ class SleepProvider extends ChangeNotifier {
     required String activeDays,
     bool isReminderEnabled = true,
   }) async {
+    await _deduplicateDaysAcrossOtherGoals(selectedDaysStr: activeDays);
     final newGoal = SleepGoalModel(
       bedtimeHour: bedtimeHour,
       bedtimeMinute: bedtimeMinute,
@@ -149,6 +154,49 @@ class SleepProvider extends ChangeNotifier {
     unawaited(SupabaseService.instance.syncSleepGoal(newGoal));
     await _syncBedtimeReminder();
     notifyListeners();
+  }
+
+  Future<void> _deduplicateDaysAcrossOtherGoals({
+    required String selectedDaysStr,
+    int? excludeGoalId,
+  }) async {
+    final selectedDays = selectedDaysStr
+        .split(',')
+        .map((d) => d.trim())
+        .where((d) => d.isNotEmpty)
+        .toSet();
+    if (selectedDays.isEmpty) return;
+
+    for (final existing in _goals) {
+      if (excludeGoalId != null && existing.id == excludeGoalId) continue;
+      if (existing.id == null) continue;
+
+      final existingDays = existing.activeDays
+          .split(',')
+          .map((d) => d.trim())
+          .where((d) => d.isNotEmpty)
+          .toList();
+      final remaining =
+          existingDays.where((d) => !selectedDays.contains(d)).toList();
+
+      if (remaining.length == existingDays.length) continue;
+
+      if (remaining.isEmpty) {
+        await DatabaseHelper.instance.deleteSleepGoal(existing.id!);
+      } else {
+        final updatedOther = SleepGoalModel(
+          id: existing.id,
+          bedtimeHour: existing.bedtimeHour,
+          bedtimeMinute: existing.bedtimeMinute,
+          wakeHour: existing.wakeHour,
+          wakeMinute: existing.wakeMinute,
+          targetDurationHours: existing.targetDurationHours,
+          activeDays: remaining.join(','),
+          isReminderEnabled: existing.isReminderEnabled,
+        );
+        await DatabaseHelper.instance.updateSleepGoal(updatedOther);
+      }
+    }
   }
 
   Future<void> deleteGoal(int id) async {
