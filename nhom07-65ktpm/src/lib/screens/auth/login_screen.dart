@@ -140,13 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Tài khoản mặc định: mkl.deeptry@gmail.com / 123456',
-                    style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _isSubmitting ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
