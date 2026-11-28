@@ -88,7 +88,7 @@ Trợ lý AI tiếp nhận câu hỏi và dữ liệu nhật ký mà người d�
 Dịch vụ thông báo sử dụng thông báo cục bộ của thiết bị để nhắc người dùng chuẩn bị đi ngủ, đến giờ đi ngủ, thức dậy hoặc kết thúc giấc ngủ ngắn. Ứng dụng cần xử lý quyền thông báo, múi giờ, lịch nhắc lặp lại và trường hợp người dùng thay đổi lịch.
 
 ### 4.5. Database và Cloud Services
-Dữ liệu cơ bản có thể được lưu cục bộ bằng SQLite hoặc một giải pháp lưu trữ phù hợp với Flutter. Nếu cần đồng bộ nhiều thiết bị và quản lý tài khoản, nhóm có thể sử dụng Firebase Authentication và Cloud Firestore. Các dữ liệu chính gồm hồ sơ người dùng, mục tiêu ngủ, lịch ngủ, nhật ký ngủ, lịch sử giấc ngủ ngắn và lịch sử trao đổi AI theo chính sách lưu trữ được công bố.
+Dữ liệu cơ bản được lưu cục bộ bằng SQLite để hỗ trợ sử dụng ngoại tuyến (Offline-First). Để đồng bộ nhiều thiết bị và quản lý tài khoản trực tuyến, nhóm sử dụng **Supabase (PostgreSQL)**. Các dữ liệu chính gồm hồ sơ người dùng, mục tiêu ngủ, lịch ngủ, nhật ký ngủ, lịch sử giấc ngủ ngắn và lịch sử trao đổi AI theo chính sách lưu trữ được công bố.
 
 ### 4.6. Hỗ trợ quản lý thời gian sử dụng thiết bị
 Ứng dụng có thể cung cấp hướng dẫn bật chế độ Không làm phiền, Focus hoặc Digital Wellbeing trên Android. Google Family Link có thể được phụ huynh cấu hình riêng để quản lý thiết bị của trẻ. Theo phạm vi tích hợp được xác định cho đề tài, nhóm không cam kết đọc hoặc thay đổi trực tiếp dữ liệu, giờ đi ngủ hay giới hạn ứng dụng của Family Link thông qua API công khai.
@@ -122,8 +122,8 @@ Flutter/Dart được sử dụng để xây dựng ứng dụng di động.
   - Phù hợp với kiến thức và môi trường học tập của nhóm.
 - **Phạm vi ứng dụng:** Flutter/Dart dùng để xây dựng giao diện, xử lý tương tác, quản lý trạng thái, kiểm tra dữ liệu và kết nối các module.
 
-### 6.2. Firebase hoặc SQLite
-Nhóm dự kiến lựa chọn cơ sở dữ liệu theo phạm vi triển khai. SQLite phù hợp lưu trữ dữ liệu cục bộ và hỗ trợ sử dụng ngoại tuyến. Firebase Authentication và Cloud Firestore có thể được sử dụng nếu cần đăng nhập và đồng bộ dữ liệu trên nhiều thiết bị.  
+### 6.2. Supabase (PostgreSQL) và SQLite
+Nhóm lựa chọn mô hình cơ sở dữ liệu song song: SQLite dùng để lưu trữ dữ liệu cục bộ và hỗ trợ sử dụng ngoại tuyến; **Supabase (PostgreSQL)** được sử dụng để lưu trữ, xác thực tài khoản và đồng bộ dữ liệu đám mây trên nhiều thiết bị.  
 - **Dữ liệu dự kiến gồm:**
   - `Users`: thông tin hồ sơ và tùy chọn người dùng.
   - `SleepGoals`: mục tiêu giờ ngủ, giờ thức dậy và thời lượng ngủ.
@@ -243,10 +243,10 @@ Nếu nhóm mở rộng kịch bản dành cho trẻ em, phụ huynh có thể �
 
 | Thành viên | Module phụ trách | Nhiệm vụ chính chi tiết |
 | :--- | :--- | :--- |
-| **Mã Khánh Linh**<br>*(2351170602 – Nhóm trưởng)* | **Giao diện, tài khoản và hồ sơ** | Thiết kế cấu trúc Flutter, trang chủ, đăng ký/đăng nhập, hồ sơ người dùng, điều hướng và tích hợp các màn hình. Quản trị chung dự án và điều phối nhóm. |
+| **Mã Khánh Linh**<br>*(2351170602 – Nhóm trưởng)* | **Giao diện, tài khoản, hồ sơ và Cơ sở dữ liệu (Database)** | Thiết kế cấu trúc Flutter, mô hình dữ liệu và cơ sở dữ liệu (SQLite & Supabase), trang chủ, đăng ký/đăng nhập, hồ sơ người dùng, điều hướng và tích hợp các màn hình. Quản trị chung dự án và điều phối nhóm. |
 | **Vũ Bá Đài**<br>*(2351170577 – Thành viên)* | **Lịch ngủ, nhắc nhở và Power Nap** | Xây dựng thiết lập mục tiêu, lịch ngủ, thông báo cục bộ (`flutter_local_notifications`), bộ đếm giấc ngủ ngắn và xử lý thay đổi lịch. |
 | **Dương Quốc Vượng**<br>*(2351170634 – Thành viên)* | **AI Sleep Assistant** | Tích hợp Gemini hoặc OpenAI API qua lớp dịch vụ phù hợp, thiết kế prompt, giao diện chat, xử lý lỗi và giới hạn an toàn của câu trả lời. |
-| **Lê Văn Dân**<br>*(2251161963 – Thành viên)* | **Nhật ký, thống kê và dữ liệu** | Thiết kế mô hình dữ liệu, lưu/đọc nhật ký, biểu đồ (`fl_chart`), tính toán tiến độ, kiểm thử và hỗ trợ tích hợp toàn ứng dụng. |
+| **Lê Văn Dân**<br>*(2251161963 – Thành viên)* | **Nhật ký giấc ngủ và Thống kê biểu đồ** | Xây dựng chức năng ghi nhận/chỉnh sửa/xem lịch sử nhật ký giấc ngủ, trực quan hóa biểu đồ thống kê (`fl_chart`), tính toán tiến độ kỷ luật, kiểm thử và hỗ trợ tích hợp toàn ứng dụng. |
 
 *Cả nhóm cùng thống nhất giao diện, quy ước mã nguồn, kiểm thử tích hợp, viết báo cáo và chuẩn bị nội dung trình diễn.*
 
@@ -262,7 +262,7 @@ Sau khi hoàn thành, nhóm mong muốn đạt được các kết quả sau:
 - Người dùng có thể ghi nhận và xem lại nhật ký ngủ.
 - Ứng dụng hiển thị được thống kê cơ bản theo ngày/tuần và tiến độ thực hiện mục tiêu.
 - Trợ lý AI có thể tiếp nhận câu hỏi và trả lời thông qua API được tích hợp.
-- Dữ liệu được lưu cục bộ hoặc đồng bộ qua Firebase theo phương án nhóm lựa chọn.
+- Dữ liệu được lưu cục bộ bằng SQLite và đồng bộ đám mây qua Supabase (PostgreSQL).
 - Ứng dụng có nội dung hướng dẫn phương pháp cải thiện thói quen ngủ và quản lý thời gian sử dụng điện thoại.
 - Có tài liệu hướng dẫn sử dụng, mã nguồn và kịch bản kiểm thử để trình diễn.
 - Các chức năng nâng cao như đồng bộ dữ liệu từ thiết bị đeo, phân tích giai đoạn ngủ, khóa ứng dụng tự động hoặc tích hợp trực tiếp Family Link chỉ được xem xét nếu có đủ thời gian, quyền truy cập và API chính thức phù hợp.
