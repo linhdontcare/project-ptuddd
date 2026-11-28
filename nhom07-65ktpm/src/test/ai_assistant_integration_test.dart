@@ -62,7 +62,7 @@ void main() {
         final mockHttpClient = MockClient((request) async {
           expect(
             request.url.toString(),
-            contains('gemini-2.5-flash:generateContent'),
+            contains('gemini-3.5-flash-lite:generateContent'),
           );
           expect(request.url.queryParameters.containsKey('key'), false);
           expect(request.headers['x-goog-api-key'], 'AQ.E2ETestSecretKey');
@@ -99,6 +99,7 @@ void main() {
           databaseHelper: DatabaseHelper.instance,
           aiService: aiService,
           apiKeyManager: apiKeyManager,
+          enableNetworkListener: false,
         );
         final sleepProvider = SleepProvider();
         await tester.runAsync(sleepProvider.loadData);
@@ -144,14 +145,11 @@ void main() {
         expect(aiProvider.isThinking, false);
         expect(capturedRequests.length, 1);
         final turn1Payload = capturedRequests[0];
-        expect(
-          turn1Payload['generationConfig']['thinkingConfig']['thinkingBudget'],
-          0,
-        );
         expect(turn1Payload['generationConfig']['maxOutputTokens'], 1024);
+        expect(turn1Payload['generationConfig'].containsKey('thinkingConfig'), false);
 
         final sysInstruction =
-            turn1Payload['system_instruction']['parts'][0]['text'] as String;
+            turn1Payload['systemInstruction']['parts'][0]['text'] as String;
         expect(
           sysInstruction,
           contains('[DỮ LIỆU THỰC TẾ TỪ DCSLEEP HIỆN TẠI]'),
@@ -216,7 +214,7 @@ void main() {
 
         expect(aiProvider.isOfflineMode, true);
         expect(
-          find.textContaining('Chế độ ngoại tuyến: Mất kết nối Internet'),
+          find.textContaining('Không có kết nối Internet'),
           findsOneWidget,
         );
         expect(find.text('[Ngoại tuyến]'), findsOneWidget);
@@ -240,6 +238,7 @@ void main() {
           databaseHelper: DatabaseHelper.instance,
           aiService: aiService,
           apiKeyManager: apiKeyManager,
+          enableNetworkListener: false,
         );
         await tester.pumpWidget(const SizedBox.shrink());
         await tester.pump();
