@@ -16,7 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _studentIdController = TextEditingController();
-  final _classController = TextEditingController(text: '65KTPM');
+  final _classController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -85,7 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Thông tin được lưu trữ cục bộ an toàn trong SQLite trên thiết bị.',
+                  'Thông tin được lưu trữ an toàn trên hệ thống Supabase và SQLite.',
                   style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                 ),
                 const SizedBox(height: 20),
@@ -93,9 +93,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _nameController,
                   label: 'Họ và tên',
                   icon: Icons.person_outline,
-                  validator: (val) => (val == null || val.trim().isEmpty)
-                      ? 'Vui lòng nhập họ tên'
-                      : null,
+                  validator: (val) {
+                    final trimmed = val?.trim() ?? '';
+                    if (trimmed.isEmpty) {
+                      return 'Vui lòng nhập họ tên';
+                    }
+                    if (!RegExp(r'^[\p{L}\s]+$', unicode: true).hasMatch(trimmed)) {
+                      return 'Họ tên chỉ được chứa chữ cái (VD: Nguyễn Văn A)';
+                    }
+                    if (trimmed.length < 2) {
+                      return 'Họ tên quá ngắn';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 14),
                 _buildField(
@@ -119,25 +129,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Expanded(
                       child: _buildField(
                         controller: _studentIdController,
-                        label: 'Mã sinh viên',
+                        label: 'Mã sinh viên (tùy chọn)',
                         icon: Icons.badge_outlined,
-                        validator: (val) => (val == null || val.trim().isEmpty)
-                            ? 'Nhập MSV'
-                            : null,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildField(
                         controller: _classController,
-                        label: 'Lớp sinh hoạt',
+                        label: 'Lớp (tùy chọn)',
                         icon: Icons.school_outlined,
-                        validator: (val) => (val == null || val.trim().isEmpty)
-                            ? 'Nhập lớp'
-                            : null,
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 6),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    'Lưu ý: Mã sinh viên và Lớp là tùy chọn, bạn có thể bỏ trống nếu không phải là sinh viên.',
+                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 TextFormField(

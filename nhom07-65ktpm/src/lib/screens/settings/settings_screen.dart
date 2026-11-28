@@ -35,28 +35,30 @@ class SettingsScreen extends StatelessWidget {
                     labelText: 'Họ và tên',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
-                  validator: (val) =>
-                      (val == null || val.trim().isEmpty) ? 'Nhập họ tên' : null,
+                  validator: (val) {
+                    final trimmed = val?.trim() ?? '';
+                    if (trimmed.isEmpty) return 'Nhập họ tên';
+                    if (!RegExp(r'^[\p{L}\s]+$', unicode: true).hasMatch(trimmed)) {
+                      return 'Họ tên chỉ được chứa chữ cái (VD: Nguyễn Văn A)';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: studentIdController,
                   decoration: const InputDecoration(
-                    labelText: 'Mã sinh viên',
+                    labelText: 'Mã sinh viên (tùy chọn)',
                     prefixIcon: Icon(Icons.badge_outlined),
                   ),
-                  validator: (val) =>
-                      (val == null || val.trim().isEmpty) ? 'Nhập MSV' : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: classController,
                   decoration: const InputDecoration(
-                    labelText: 'Lớp sinh hoạt',
+                    labelText: 'Lớp sinh hoạt (tùy chọn)',
                     prefixIcon: Icon(Icons.school_outlined),
                   ),
-                  validator: (val) =>
-                      (val == null || val.trim().isEmpty) ? 'Nhập lớp' : null,
                 ),
               ],
             ),
@@ -253,10 +255,21 @@ class SettingsScreen extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                '${user.studentId} • Lớp ${user.className}\n${user.email}',
+                [
+                  if (user.studentId.trim().isNotEmpty ||
+                      user.className.trim().isNotEmpty)
+                    [
+                      if (user.studentId.trim().isNotEmpty)
+                        user.studentId.trim(),
+                      if (user.className.trim().isNotEmpty)
+                        'Lớp ${user.className.trim()}',
+                    ].join(' • '),
+                  user.email,
+                ].join('\n'),
                 style: const TextStyle(fontSize: 12),
               ),
-              isThreeLine: true,
+              isThreeLine: user.studentId.trim().isNotEmpty ||
+                  user.className.trim().isNotEmpty,
               trailing: IconButton(
                 icon: const Icon(Icons.edit_outlined, color: AppTheme.accentCyan),
                 tooltip: 'Chỉnh sửa hồ sơ',

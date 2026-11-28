@@ -115,7 +115,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       ),
                     ),
                     Text(
-                      '${user.studentId} • Lớp ${user.className}',
+                      (user.studentId.trim().isNotEmpty ||
+                              user.className.trim().isNotEmpty)
+                          ? [
+                              if (user.studentId.trim().isNotEmpty)
+                                user.studentId.trim(),
+                              if (user.className.trim().isNotEmpty)
+                                'Lớp ${user.className.trim()}',
+                            ].join(' • ')
+                          : user.email,
                       style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
                     ),
                   ],
