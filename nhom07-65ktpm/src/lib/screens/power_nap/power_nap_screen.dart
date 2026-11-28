@@ -8,6 +8,139 @@ import '../../providers/nap_provider.dart';
 class PowerNapScreen extends StatelessWidget {
   const PowerNapScreen({super.key});
 
+  void _showCustomDurationDialog(BuildContext context, NapProvider napProv) {
+    if (napProv.isRunning) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng tạm dừng hoặc hủy trước khi đổi thời gian.'),
+        ),
+      );
+      return;
+    }
+
+    int tempMinutes = napProv.selectedPresetMinutes;
+    final controller = TextEditingController(text: tempMinutes.toString());
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            title: const Text('Chọn Thời Gian Ngủ Ngắn'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$tempMinutes phút',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: tempMinutes > 30
+                          ? AppTheme.softAmber
+                          : AppTheme.accentCyan,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Slider(
+                    value: tempMinutes.clamp(1, 120).toDouble(),
+                    min: 1,
+                    max: 120,
+                    divisions: 119,
+                    activeColor: tempMinutes > 30
+                        ? AppTheme.softAmber
+                        : AppTheme.accentIndigo,
+                    inactiveColor: AppTheme.cardNavy,
+                    label: '$tempMinutes phút',
+                    onChanged: (val) {
+                      setDialogState(() {
+                        tempMinutes = val.round();
+                        controller.text = tempMinutes.toString();
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Hoặc nhập số phút (1 - 180)',
+                      suffixText: 'phút',
+                      filled: true,
+                      fillColor: AppTheme.surfaceNavy,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onChanged: (val) {
+                      final parsed = int.tryParse(val);
+                      if (parsed != null && parsed >= 1 && parsed <= 180) {
+                        setDialogState(() {
+                          tempMinutes = parsed;
+                        });
+                      }
+                    },
+                  ),
+                  if (tempMinutes > 30) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.softAmber.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.softAmber.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        children: const [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: AppTheme.softAmber,
+                            size: 18,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Không khuyến khích ngủ trưa quá 30 phút vì dễ gây uể oải khi tỉnh dậy và ảnh hưởng giấc ngủ tối.',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppTheme.softAmber,
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Hủy'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final parsed = int.tryParse(controller.text) ?? tempMinutes;
+                  final clamped = parsed.clamp(1, 180);
+                  napProv.selectCustomDuration(clamped);
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Xác nhận'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final napProv = context.watch<NapProvider>();
@@ -48,17 +181,44 @@ class PowerNapScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
-              children: AppConstants.napPresetsMinutes.map((minutes) {
-                final isSelected = napProv.selectedPresetMinutes == minutes;
-                return ChoiceChip(
-                  label: Text('$minutes phút'),
-                  selected: isSelected,
-                  selectedColor: AppTheme.accentIndigo,
-                  onSelected: (selected) {
-                    if (selected) napProv.selectPreset(minutes);
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                ...AppConstants.napPresetsMinutes.map((minutes) {
+                  final isSelected = napProv.selectedPresetMinutes == minutes;
+                  return ChoiceChip(
+                    label: Text('$minutes phút'),
+                    selected: isSelected,
+                    selectedColor: AppTheme.accentIndigo,
+                    onSelected: (selected) {
+                      if (selected) napProv.selectPreset(minutes);
+                    },
+                  );
+                }),
+                Builder(
+                  builder: (context) {
+                    final isCustomSelected = !AppConstants.napPresetsMinutes
+                        .contains(napProv.selectedPresetMinutes);
+                    return ChoiceChip(
+                      avatar: Icon(
+                        Icons.tune,
+                        size: 16,
+                        color: isCustomSelected
+                            ? Colors.white
+                            : AppTheme.accentCyan,
+                      ),
+                      label: Text(
+                        isCustomSelected
+                            ? 'Tùy chỉnh (${napProv.selectedPresetMinutes}p)'
+                            : 'Tùy chỉnh...',
+                      ),
+                      selected: isCustomSelected,
+                      selectedColor: AppTheme.accentIndigo,
+                      onSelected: (_) => _showCustomDurationDialog(context, napProv),
+                    );
                   },
-                );
-              }).toList(),
+                ),
+              ],
             ),
             const SizedBox(height: 36),
 

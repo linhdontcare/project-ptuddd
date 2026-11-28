@@ -47,6 +47,21 @@ class NapProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void selectCustomDuration(int minutes) {
+    if (minutes < 1 || minutes > 180) {
+      throw ArgumentError.value(
+        minutes,
+        'minutes',
+        'Custom duration must be between 1 and 180 minutes',
+      );
+    }
+    if (isRunning) return;
+    _selectedPresetMinutes = minutes;
+    _remainingSeconds = minutes * 60;
+    _status = NapStatus.notStarted;
+    notifyListeners();
+  }
+
   void startTimer() {
     if (isRunning || _status == NapStatus.paused) return;
     if (isCompleted) {
