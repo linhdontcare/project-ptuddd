@@ -6,6 +6,20 @@ import 'package:dcsleep/data/database/database_helper.dart';
 import 'package:dcsleep/providers/sleep_provider.dart';
 import 'package:dcsleep/screens/sleep_management/sleep_goal_screen.dart';
 
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (finder.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
+    await tester.pump();
+  }
+}
+
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
@@ -43,14 +57,18 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    await tester.tap(
-      find.widgetWithText(ElevatedButton, 'Lưu Mục Tiêu Giấc Ngủ'),
+    final saveButton = find.widgetWithText(
+      ElevatedButton,
+      'Lưu Mục Tiêu Giấc Ngủ',
     );
+    await tester.ensureVisible(saveButton);
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
     await tester.pump();
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    await _pumpUntilFound(
+      tester,
+      find.text('Đã cập nhật mục tiêu giấc ngủ thành công!'),
     );
-    await tester.pump();
 
     expect(find.text('Thiết Lập Mục Tiêu Ngủ'), findsOneWidget);
     expect(
@@ -71,5 +89,44 @@ void main() {
           .selected;
       expect(selected, ['T2', 'T4', 'T6', 'CN'].contains(day));
     }
+  });
+
+  testWidgets('toggling bedtime reminder switch persists preference', (
+    tester,
+  ) async {
+    final provider = SleepProvider();
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: provider,
+        child: const MaterialApp(home: SleepGoalScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.runAsync(provider.loadData);
+    await tester.pump();
+
+    final switchTile = find.widgetWithText(SwitchListTile, 'Nhắc giờ đi ngủ');
+    expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
+
+    await tester.ensureVisible(switchTile);
+    await tester.pumpAndSettle();
+    await tester.tap(switchTile);
+    await tester.pump();
+    await _pumpUntilFound(tester, find.text('Đã tắt nhắc giờ đi ngủ'));
+
+    expect(tester.widget<SwitchListTile>(switchTile).value, isFalse);
+    expect(find.text('Đã tắt nhắc giờ đi ngủ'), findsOneWidget);
+    var savedGoal = await tester.runAsync(DatabaseHelper.instance.getSleepGoal);
+    expect(savedGoal?.isReminderEnabled, isFalse);
+
+    await tester.tap(switchTile);
+    await tester.pump();
+    await _pumpUntilFound(tester, find.text('Đã bật nhắc giờ đi ngủ'));
+
+    expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
+    expect(find.text('Đã bật nhắc giờ đi ngủ'), findsOneWidget);
+    savedGoal = await tester.runAsync(DatabaseHelper.instance.getSleepGoal);
+    expect(savedGoal?.isReminderEnabled, isTrue);
   });
 }

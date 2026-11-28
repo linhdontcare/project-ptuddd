@@ -36,7 +36,18 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
     final goal = context.watch<SleepProvider>().goal;
     if (identical(goal, _observedGoal)) return;
 
+    final previousGoal = _observedGoal;
     _observedGoal = goal;
+    if (previousGoal != null &&
+        previousGoal.bedtimeHour == goal.bedtimeHour &&
+        previousGoal.bedtimeMinute == goal.bedtimeMinute &&
+        previousGoal.wakeHour == goal.wakeHour &&
+        previousGoal.wakeMinute == goal.wakeMinute &&
+        previousGoal.targetDurationHours == goal.targetDurationHours &&
+        previousGoal.activeDays == goal.activeDays) {
+      return;
+    }
+
     _bedtime = TimeOfDay(hour: goal.bedtimeHour, minute: goal.bedtimeMinute);
     _wakeTime = TimeOfDay(hour: goal.wakeHour, minute: goal.wakeMinute);
     _targetDuration = goal.targetDurationHours;
@@ -126,6 +137,22 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
     }
   }
 
+  Future<void> _setReminderEnabled(bool value) async {
+    await context.read<SleepProvider>().setReminderEnabled(value);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              value ? 'Đã bật nhắc giờ đi ngủ' : 'Đã tắt nhắc giờ đi ngủ',
+            ),
+          ),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -210,6 +237,11 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
                   ],
                 ),
               ),
+            ),
+            SwitchListTile(
+              title: const Text('Nhắc giờ đi ngủ'),
+              value: context.watch<SleepProvider>().goal.isReminderEnabled,
+              onChanged: _setReminderEnabled,
             ),
             const SizedBox(height: 24),
             SizedBox(
