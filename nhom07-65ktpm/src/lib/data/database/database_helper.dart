@@ -463,6 +463,66 @@ class DatabaseHelper {
     await db.delete(AppConstants.tableAIConversations);
   }
 
+  Future<void> resetLocalDataForNewUser() async {
+    final db = await database;
+    if (db == null) return;
+    await db.delete(AppConstants.tableSleepGoals);
+    await db.insert(
+      AppConstants.tableSleepGoals,
+      SleepGoalModel(
+        bedtimeHour: AppConstants.defaultBedtimeHour,
+        bedtimeMinute: AppConstants.defaultBedtimeMinute,
+        wakeHour: AppConstants.defaultWakeHour,
+        wakeMinute: AppConstants.defaultWakeMinute,
+        targetDurationHours: AppConstants.defaultTargetDurationHours,
+      ).toMap(),
+    );
+    await db.delete(AppConstants.tableSleepRecords);
+    await db.delete(AppConstants.tableNapRecords);
+    await db.delete(AppConstants.tableAIConversations);
+    await db.insert(
+      AppConstants.tableAIConversations,
+      AIMessageModel(
+        text:
+            'Xin chào! Tôi là Trợ lý AI Giấc ngủ DCSleep. Tôi có thể hỗ trợ bạn tìm hiểu về vệ sinh giấc ngủ, gợi ý kỹ thuật thư giãn và điều chỉnh thói quen ngủ khoa học. Hãy đặt câu hỏi cho tôi nhé!',
+        isUser: false,
+      ).toMap(),
+    );
+  }
+
+  Future<void> replaceUserDataFromRemote({
+    SleepGoalModel? goal,
+    List<SleepRecordModel>? sleepRecords,
+    List<NapRecordModel>? napRecords,
+    List<AIMessageModel>? aiMessages,
+  }) async {
+    final db = await database;
+    if (db == null) return;
+
+    if (goal != null) {
+      await db.delete(AppConstants.tableSleepGoals);
+      await db.insert(AppConstants.tableSleepGoals, goal.toMap());
+    }
+    if (sleepRecords != null && sleepRecords.isNotEmpty) {
+      await db.delete(AppConstants.tableSleepRecords);
+      for (final record in sleepRecords) {
+        await db.insert(AppConstants.tableSleepRecords, record.toMap());
+      }
+    }
+    if (napRecords != null && napRecords.isNotEmpty) {
+      await db.delete(AppConstants.tableNapRecords);
+      for (final nap in napRecords) {
+        await db.insert(AppConstants.tableNapRecords, nap.toMap());
+      }
+    }
+    if (aiMessages != null && aiMessages.isNotEmpty) {
+      await db.delete(AppConstants.tableAIConversations);
+      for (final msg in aiMessages) {
+        await db.insert(AppConstants.tableAIConversations, msg.toMap());
+      }
+    }
+  }
+
   // Lấy danh sách người dùng
   Future<List<UserModel>> getAllUsers() async {
     final db = await database;

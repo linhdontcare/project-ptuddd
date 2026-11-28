@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../providers/ai_assistant_provider.dart';
+import '../../providers/nap_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/sleep_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -53,6 +56,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         SnackBar(content: Text(error), backgroundColor: AppTheme.softRed),
       );
     } else {
+      await Future.wait([
+        context.read<SleepProvider>().loadData(),
+        context.read<NapProvider>().loadHistory(),
+        context.read<AIAssistantProvider>().loadMessages(),
+      ]);
+      if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

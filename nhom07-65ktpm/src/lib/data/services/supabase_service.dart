@@ -12,10 +12,18 @@ class SupabaseService {
   SupabaseService._init();
 
   bool _initialized = false;
+  String? _currentUserEmail;
 
   void markInitialized() {
     _initialized = true;
   }
+
+  void setCurrentUserEmail(String? email) {
+    final normalized = email?.trim().toLowerCase();
+    _currentUserEmail = (normalized == null || normalized.isEmpty) ? null : normalized;
+  }
+
+  String? get currentUserEmail => _currentUserEmail;
 
   SupabaseClient? get _client {
     if (!_initialized) return null;
@@ -104,9 +112,11 @@ class SupabaseService {
   // --- Sleep Goals ---
   Future<void> syncSleepGoal(SleepGoalModel goal) async {
     final client = _client;
-    if (client == null) return;
+    final userEmail = _currentUserEmail;
+    if (client == null || userEmail == null) return;
     try {
       await client.from('sleep_goals').insert({
+        'user_email': userEmail,
         'bedtime_hour': goal.bedtimeHour,
         'bedtime_minute': goal.bedtimeMinute,
         'wake_hour': goal.wakeHour,
@@ -120,12 +130,41 @@ class SupabaseService {
     }
   }
 
+  Future<SleepGoalModel?> fetchSleepGoal(String email) async {
+    final client = _client;
+    if (client == null) return null;
+    try {
+      final data = await client
+          .from('sleep_goals')
+          .select()
+          .eq('user_email', email.trim().toLowerCase())
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      if (data == null) return null;
+      return SleepGoalModel(
+        bedtimeHour: data['bedtime_hour'] as int,
+        bedtimeMinute: data['bedtime_minute'] as int,
+        wakeHour: data['wake_hour'] as int,
+        wakeMinute: data['wake_minute'] as int,
+        targetDurationHours: (data['target_duration_hours'] as num).toDouble(),
+        activeDays: data['active_days'] as String? ?? '1,2,3,4,5,6,7',
+        isReminderEnabled: data['is_reminder_enabled'] as bool? ?? true,
+      );
+    } catch (e) {
+      debugPrint('[SupabaseService] fetchSleepGoal error: $e');
+      return null;
+    }
+  }
+
   // --- Sleep Records ---
   Future<void> syncSleepRecord(SleepRecordModel record) async {
     final client = _client;
-    if (client == null) return;
+    final userEmail = _currentUserEmail;
+    if (client == null || userEmail == null) return;
     try {
       await client.from('sleep_records').insert({
+        'user_email': userEmail,
         'sleep_time': record.sleepTime.toIso8601String(),
         'wake_time': record.wakeTime.toIso8601String(),
         'duration_hours': record.durationHours,
@@ -140,12 +179,43 @@ class SupabaseService {
     }
   }
 
+  Future<List<SleepRecordModel>?> fetchSleepRecords(String email) async {
+    final client = _client;
+    if (client == null) return null;
+    try {
+      final rows = await client
+          .from('sleep_records')
+          .select()
+          .eq('user_email', email.trim().toLowerCase())
+          .order('created_at', ascending: false)
+          .limit(30);
+      return (rows as List<dynamic>).map((row) {
+        final data = row as Map<String, dynamic>;
+        return SleepRecordModel(
+          sleepTime: DateTime.parse(data['sleep_time'] as String).toLocal(),
+          wakeTime: DateTime.parse(data['wake_time'] as String).toLocal(),
+          durationHours: (data['duration_hours'] as num).toDouble(),
+          wakeUpCount: data['wake_up_count'] as int? ?? 0,
+          feelingRating: data['feeling_rating'] as int? ?? 3,
+          note: data['note'] as String? ?? '',
+          isGoalMet: data['is_goal_met'] as bool? ?? false,
+          createdAt: DateTime.parse(data['created_at'] as String).toLocal(),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('[SupabaseService] fetchSleepRecords error: $e');
+      return null;
+    }
+  }
+
   // --- Nap Records ---
   Future<void> syncNapRecord(NapRecordModel nap) async {
     final client = _client;
-    if (client == null) return;
+    final userEmail = _currentUserEmail;
+    if (client == null || userEmail == null) return;
     try {
       await client.from('nap_records').insert({
+        'user_email': userEmail,
         'start_time': nap.startTime.toIso8601String(),
         'duration_minutes': nap.durationMinutes,
         'note': nap.note,
@@ -156,12 +226,39 @@ class SupabaseService {
     }
   }
 
+  Future<List<NapRecordModel>?> fetchNapRecords(String email) async {
+    final client = _client;
+    if (client == null) return null;
+    try {
+      final rows = await client
+          .from('nap_records')
+          .select()
+          .eq('user_email', email.trim().toLowerCase())
+          .order('created_at', ascending: false)
+          .limit(20);
+      return (rows as List<dynamic>).map((row) {
+        final data = row as Map<String, dynamic>;
+        return NapRecordModel(
+          startTime: DateTime.parse(data['start_time'] as String).toLocal(),
+          durationMinutes: data['duration_minutes'] as int,
+          note: data['note'] as String? ?? '',
+          createdAt: DateTime.parse(data['created_at'] as String).toLocal(),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('[SupabaseService] fetchNapRecords error: $e');
+      return null;
+    }
+  }
+
   // --- AI Messages ---
   Future<void> syncAIMessage(AIMessageModel message) async {
     final client = _client;
-    if (client == null) return;
+    final userEmail = _currentUserEmail;
+    if (client == null || userEmail == null) return;
     try {
       await client.from('ai_messages').insert({
+        'user_email': userEmail,
         'text': message.text,
         'is_user': message.isUser,
         'is_offline': message.isOffline,
@@ -172,11 +269,36 @@ class SupabaseService {
     }
   }
 
+  Future<List<AIMessageModel>?> fetchAIMessages(String email) async {
+    final client = _client;
+    if (client == null) return null;
+    try {
+      final rows = await client
+          .from('ai_messages')
+          .select()
+          .eq('user_email', email.trim().toLowerCase())
+          .order('timestamp', ascending: true);
+      return (rows as List<dynamic>).map((row) {
+        final data = row as Map<String, dynamic>;
+        return AIMessageModel(
+          text: data['text'] as String,
+          isUser: data['is_user'] as bool,
+          isOffline: data['is_offline'] as bool? ?? false,
+          timestamp: DateTime.parse(data['timestamp'] as String).toLocal(),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('[SupabaseService] fetchAIMessages error: $e');
+      return null;
+    }
+  }
+
   Future<void> clearAIMessages() async {
     final client = _client;
-    if (client == null) return;
+    final userEmail = _currentUserEmail;
+    if (client == null || userEmail == null) return;
     try {
-      await client.from('ai_messages').delete().gte('id', 0);
+      await client.from('ai_messages').delete().eq('user_email', userEmail);
     } catch (e) {
       debugPrint('[SupabaseService] clearAIMessages error: $e');
     }

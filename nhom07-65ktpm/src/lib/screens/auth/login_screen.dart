@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../providers/ai_assistant_provider.dart';
+import '../../providers/nap_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/sleep_provider.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -41,6 +44,12 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error), backgroundColor: AppTheme.softRed),
       );
+    } else {
+      await Future.wait([
+        context.read<SleepProvider>().loadData(),
+        context.read<NapProvider>().loadHistory(),
+        context.read<AIAssistantProvider>().loadMessages(),
+      ]);
     }
   }
 

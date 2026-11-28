@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/database/database_helper.dart';
+import '../data/models/ai_message_model.dart';
+import '../data/models/nap_record_model.dart';
 import '../data/models/reminder_model.dart';
+import '../data/models/sleep_goal_model.dart';
+import '../data/models/sleep_record_model.dart';
 import '../data/models/user_model.dart';
 import '../data/services/supabase_service.dart';
 
@@ -38,6 +42,7 @@ class SettingsProvider extends ChangeNotifier {
       _saveAiHistory = prefs.getBool(_keySaveAiHistory) ?? true;
       final savedEmail = prefs.getString(_keyCurrentUserEmail);
       if (_isLoggedIn && savedEmail != null && savedEmail.isNotEmpty) {
+        SupabaseService.instance.setCurrentUserEmail(savedEmail);
         final dbUser = await DatabaseHelper.instance.getUserByEmail(savedEmail);
         if (dbUser != null) {
           _user = dbUser;
@@ -81,6 +86,30 @@ class SettingsProvider extends ChangeNotifier {
       debugPrint('[SettingsProvider] Login prefs error: $e');
     }
 
+    final switchedAccount = _user.email.trim().toLowerCase() != trimmedEmail;
+    SupabaseService.instance.setCurrentUserEmail(foundUser.email);
+
+    final results = await Future.wait([
+      SupabaseService.instance.fetchSleepGoal(trimmedEmail),
+      SupabaseService.instance.fetchSleepRecords(trimmedEmail),
+      SupabaseService.instance.fetchNapRecords(trimmedEmail),
+      SupabaseService.instance.fetchAIMessages(trimmedEmail),
+    ]);
+    final remoteGoal = results[0] as SleepGoalModel?;
+    final remoteSleepRecords = results[1] as List<SleepRecordModel>?;
+    final remoteNapRecords = results[2] as List<NapRecordModel>?;
+    final remoteAiMessages = results[3] as List<AIMessageModel>?;
+
+    if (switchedAccount) {
+      await DatabaseHelper.instance.resetLocalDataForNewUser();
+    }
+    await DatabaseHelper.instance.replaceUserDataFromRemote(
+      goal: remoteGoal,
+      sleepRecords: remoteSleepRecords,
+      napRecords: remoteNapRecords,
+      aiMessages: remoteAiMessages,
+    );
+
     _user = foundUser;
     _isLoggedIn = true;
     notifyListeners();
@@ -109,7 +138,9 @@ class SettingsProvider extends ChangeNotifier {
     );
 
     await DatabaseHelper.instance.registerUser(newUser);
+    SupabaseService.instance.setCurrentUserEmail(newUser.email);
     await SupabaseService.instance.upsertUser(newUser, password: password);
+    await DatabaseHelper.instance.resetLocalDataForNewUser();
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -146,6 +177,7 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    SupabaseService.instance.setCurrentUserEmail(null);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsLoggedIn, false);
