@@ -115,25 +115,31 @@ class NotificationService {
     }
   }
 
-  Future<void> cancelBedtimeReminders() async {
+  Future<void> _cancelReminderRange(int startId, int endId, String label) async {
     var cancelled = true;
-    for (var id = 100; id <= 107; id++) {
+    for (var id = startId; id <= endId; id++) {
       try {
         await _notificationsPlugin.cancel(id: id);
       } catch (e) {
         cancelled = false;
         debugPrint(
-          '[NotificationService] Lỗi hủy lịch nhắc giờ đi ngủ id=$id: $e',
+          '[NotificationService] Lỗi hủy lịch $label id=$id: $e',
         );
       }
     }
 
     if (cancelled) {
       debugPrint(
-        '[NotificationService] Đã hủy lịch nhắc giờ đi ngủ (id 100-107).',
+        '[NotificationService] Đã hủy lịch $label (id $startId-$endId).',
       );
     }
   }
+
+  Future<void> cancelBedtimeReminders() =>
+      _cancelReminderRange(100, 107, 'nhắc giờ đi ngủ');
+
+  Future<void> cancelWakeupReminders() =>
+      _cancelReminderRange(200, 207, 'nhắc giờ thức dậy');
 
   Future<void> scheduleBedtimeReminder({
     required int hour,
@@ -141,10 +147,46 @@ class NotificationService {
     required String title,
     required String body,
     String? activeDays,
+  }) =>
+      _scheduleWeeklyReminder(
+        baseId: 100,
+        hour: hour,
+        minute: minute,
+        title: title,
+        body: body,
+        activeDays: activeDays,
+        label: 'nhắc giờ đi ngủ',
+      );
+
+  Future<void> scheduleWakeupReminder({
+    required int hour,
+    required int minute,
+    required String title,
+    required String body,
+    String? activeDays,
+  }) =>
+      _scheduleWeeklyReminder(
+        baseId: 200,
+        hour: hour,
+        minute: minute,
+        title: title,
+        body: body,
+        activeDays: activeDays,
+        label: 'nhắc giờ thức dậy',
+      );
+
+  Future<void> _scheduleWeeklyReminder({
+    required int baseId,
+    required int hour,
+    required int minute,
+    required String title,
+    required String body,
+    required String label,
+    String? activeDays,
   }) async {
     try {
       _ensureTimezoneInitialized();
-      await cancelBedtimeReminders();
+      await _cancelReminderRange(baseId, baseId + 7, label);
 
       const weekdayNumbers = <String, int>{
         'T2': DateTime.monday,
@@ -168,7 +210,7 @@ class NotificationService {
 
       if (selectedDays.isEmpty) {
         debugPrint(
-          '[NotificationService] Không có ngày áp dụng hợp lệ; không lên lịch nhắc giờ đi ngủ.',
+          '[NotificationService] Không có ngày áp dụng hợp lệ; không lên lịch $label.',
         );
         return;
       }
@@ -177,8 +219,10 @@ class NotificationService {
         android: AndroidNotificationDetails(
           'dcsleep_reminders',
           'Nhắc nhở giấc ngủ',
-          importance: Importance.high,
+          importance: Importance.max,
           priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
         ),
         iOS: DarwinNotificationDetails(),
         macOS: DarwinNotificationDetails(),
@@ -218,7 +262,7 @@ class NotificationService {
           }
 
           await _notificationsPlugin.zonedSchedule(
-            id: 100 + weekday,
+            id: baseId + weekday,
             title: title,
             body: body,
             scheduledDate: scheduledDate,
@@ -229,7 +273,7 @@ class NotificationService {
           debugPrint(
             '[NotificationService] Đã lên lịch lặp ${_weekdayName(weekday)} '
             'lúc ${_formatTime(hour, minute)} (lần tới ${_formatDateTime(scheduledDate)}), '
-            'id=${100 + weekday}.',
+            'id=${baseId + weekday}.',
           );
         }
         return;
@@ -237,7 +281,7 @@ class NotificationService {
 
       if (!kIsWeb && defaultTargetPlatform != TargetPlatform.windows) {
         debugPrint(
-          '[NotificationService] Nền tảng ${defaultTargetPlatform.name} không được cấu hình lịch nhắc giờ đi ngủ.',
+          '[NotificationService] Nền tảng ${defaultTargetPlatform.name} không được cấu hình lịch $label.',
         );
         return;
       }
@@ -262,13 +306,13 @@ class NotificationService {
 
       if (nextReminder == null) {
         debugPrint(
-          '[NotificationService] Không tìm thấy thời điểm nhắc giờ đi ngủ sắp tới.',
+          '[NotificationService] Không tìm thấy thời điểm $label sắp tới.',
         );
         return;
       }
 
       await _notificationsPlugin.zonedSchedule(
-        id: 100,
+        id: baseId,
         title: title,
         body: body,
         scheduledDate: nextReminder,
@@ -278,7 +322,7 @@ class NotificationService {
       final platform = kIsWeb ? 'Web' : 'Windows';
       debugPrint(
         '[NotificationService] Đã lên lịch một lần trên $platform: '
-        '${_weekdayName(nextReminder.weekday)} ${_formatDateTime(nextReminder)}, id=100.',
+        '${_weekdayName(nextReminder.weekday)} ${_formatDateTime(nextReminder)}, id=$baseId.',
       );
     } on UnsupportedError catch (e) {
       final platform = kIsWeb ? 'Web' : defaultTargetPlatform.name;

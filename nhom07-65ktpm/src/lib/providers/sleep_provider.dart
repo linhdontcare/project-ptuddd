@@ -117,8 +117,16 @@ class SleepProvider extends ChangeNotifier {
         body: 'Đã đến giờ đi ngủ theo lịch bạn đặt. Chuẩn bị nghỉ thôi!',
         activeDays: _goal.activeDays,
       );
+      await NotificationService.instance.scheduleWakeupReminder(
+        hour: _goal.wakeHour,
+        minute: _goal.wakeMinute,
+        title: 'Đã đến giờ thức dậy!',
+        body: 'Chào buổi sáng! Đã đến giờ thức dậy đón ngày mới rồi!',
+        activeDays: _goal.activeDays,
+      );
     } else {
       await NotificationService.instance.cancelBedtimeReminders();
+      await NotificationService.instance.cancelWakeupReminders();
     }
   }
 
