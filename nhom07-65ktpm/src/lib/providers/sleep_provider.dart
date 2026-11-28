@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../data/database/database_helper.dart';
 import '../data/models/sleep_goal_model.dart';
 import '../data/models/sleep_record_model.dart';
+import '../data/services/notification_service.dart';
 import '../data/services/supabase_service.dart';
 
 class SleepProvider extends ChangeNotifier {
@@ -17,6 +18,7 @@ class SleepProvider extends ChangeNotifier {
   );
   List<SleepRecordModel> _records = [];
   bool _isLoading = true;
+  bool _hasSyncedInitialReminder = false;
 
   SleepGoalModel get goal => _goal;
   List<SleepRecordModel> get records => _records;
@@ -48,6 +50,19 @@ class SleepProvider extends ChangeNotifier {
     _goal = await DatabaseHelper.instance.getSleepGoal();
     _records = await DatabaseHelper.instance.getSleepRecords();
 
+    if (!_hasSyncedInitialReminder) {
+      _hasSyncedInitialReminder = true;
+      if (_goal.isReminderEnabled) {
+        try {
+          await _syncBedtimeReminder();
+        } catch (e) {
+          debugPrint(
+            '[SleepProvider] Lỗi lên lịch lại nhắc giờ đi ngủ khi mở app: $e',
+          );
+        }
+      }
+    }
+
     _isLoading = false;
     notifyListeners();
   }
@@ -72,7 +87,39 @@ class SleepProvider extends ChangeNotifier {
     );
     await DatabaseHelper.instance.updateSleepGoal(_goal);
     unawaited(SupabaseService.instance.syncSleepGoal(_goal));
+    await _syncBedtimeReminder();
     notifyListeners();
+  }
+
+  Future<void> setReminderEnabled(bool value) async {
+    _goal = SleepGoalModel(
+      id: _goal.id,
+      bedtimeHour: _goal.bedtimeHour,
+      bedtimeMinute: _goal.bedtimeMinute,
+      wakeHour: _goal.wakeHour,
+      wakeMinute: _goal.wakeMinute,
+      targetDurationHours: _goal.targetDurationHours,
+      activeDays: _goal.activeDays,
+      isReminderEnabled: value,
+    );
+    await DatabaseHelper.instance.updateSleepGoal(_goal);
+    unawaited(SupabaseService.instance.syncSleepGoal(_goal));
+    await _syncBedtimeReminder();
+    notifyListeners();
+  }
+
+  Future<void> _syncBedtimeReminder() async {
+    if (_goal.isReminderEnabled) {
+      await NotificationService.instance.scheduleBedtimeReminder(
+        hour: _goal.bedtimeHour,
+        minute: _goal.bedtimeMinute,
+        title: 'Đến giờ đi ngủ rồi',
+        body: 'Đã đến giờ đi ngủ theo lịch bạn đặt. Chuẩn bị nghỉ thôi!',
+        activeDays: _goal.activeDays,
+      );
+    } else {
+      await NotificationService.instance.cancelBedtimeReminders();
+    }
   }
 
   Future<void> addSleepRecord({

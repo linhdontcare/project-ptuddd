@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_constants.dart';
 import '../data/database/database_helper.dart';
 import '../data/models/nap_record_model.dart';
+import '../data/services/notification_service.dart';
 import '../data/services/supabase_service.dart';
 
 enum NapStatus { notStarted, running, paused, completed }
@@ -97,20 +98,24 @@ class NapProvider extends ChangeNotifier {
     _timer = null;
     _status = NapStatus.completed;
     notifyListeners();
-    unawaited(_recordCompletedNap());
+    unawaited(_recordCompletedNap(_selectedPresetMinutes));
   }
 
-  Future<void> _recordCompletedNap() async {
+  Future<void> _recordCompletedNap(int completedMinutes) async {
     final nap = NapRecordModel(
       startTime: DateTime.now().subtract(
-        Duration(minutes: _selectedPresetMinutes),
+        Duration(minutes: completedMinutes),
       ),
-      durationMinutes: _selectedPresetMinutes,
-      note: 'Hoàn thành giấc ngủ ngắn $_selectedPresetMinutes phút.',
+      durationMinutes: completedMinutes,
+      note: 'Hoàn thành giấc ngủ ngắn $completedMinutes phút.',
     );
     await DatabaseHelper.instance.insertNapRecord(nap);
     unawaited(SupabaseService.instance.syncNapRecord(nap));
     await loadHistory();
+    await NotificationService.instance.showNow(
+      title: 'Đã hết giờ ngủ ngắn',
+      body: 'Giấc ngủ ngắn $completedMinutes phút đã kết thúc, dậy thôi!',
+    );
   }
 
   Future<void> loadHistory() async {

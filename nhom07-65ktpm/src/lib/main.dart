@@ -7,6 +7,7 @@ import 'data/database/database_factory_initializer_stub.dart'
     if (dart.library.io)
       'data/database/database_factory_initializer_io.dart'
     as database_factory_initializer;
+import 'data/services/notification_service.dart';
 import 'data/services/supabase_service.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/sleep_provider.dart';
@@ -19,6 +20,7 @@ import 'screens/main_navigation_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   database_factory_initializer.initializeDatabaseFactory();
+  await NotificationService.instance.initialize();
   try {
     await Supabase.initialize(
       url: SupabaseConfig.supabaseUrl,
