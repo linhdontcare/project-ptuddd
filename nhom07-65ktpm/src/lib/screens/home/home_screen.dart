@@ -66,6 +66,66 @@ class _HomeScreenState extends State<HomeScreen> {
       'quote': 'Tránh ánh sáng xanh từ màn hình điện thoại 30 phút trước khi ngủ kích thích sản sinh Melatonin tự nhiên.',
       'author': 'Viện Y học Giấc ngủ Hoa Kỳ (AASM)',
     },
+    {
+      'quote': 'Giấc ngủ là sợi dây chuyền vàng kết nối sức khỏe và cơ thể chúng ta lại với nhau.',
+      'author': 'Thomas Dekker (Nhà văn người Anh)',
+    },
+    {
+      'quote': 'Ngủ đủ giấc không phải là sự lười biếng, mà là khoản đầu tư sinh lời nhất cho trí nhớ và hiệu suất học tập.',
+      'author': 'Trường Y Harvard (Harvard Medical School)',
+    },
+    {
+      'quote': 'Một tiếng ngủ trước nửa đêm có giá trị phục hồi tương đương hai tiếng ngủ sau nửa đêm.',
+      'author': 'Kinh nghiệm nhịp sinh học truyền thống',
+    },
+    {
+      'quote': 'Cười thật nhiều và ngủ thật đủ là hai liều thuốc tốt nhất trong cuốn sách của người bác sĩ.',
+      'author': 'Tục ngữ Ireland',
+    },
+    {
+      'quote': 'Khi bạn cắt giảm giấc ngủ để làm thêm việc, bạn đang đánh đổi sự sắc bén của ngày mai lấy sự mệt mỏi hôm nay.',
+      'author': 'Arianna Huffington (Tác giả cuốn "The Sleep Revolution")',
+    },
+    {
+      'quote': 'Giấc ngủ là hình thức thiền định tốt nhất giúp tâm trí gột rửa căng thẳng sau một ngày dài.',
+      'author': 'Đức Đạt Lai Lạt Ma',
+    },
+    {
+      'quote': 'Trong khi bạn ngủ say, não bộ âm thầm củng cố ký ức và biến kiến thức mới thành trí nhớ dài hạn.',
+      'author': 'Trung tâm Khoa học Thần kinh Giấc ngủ',
+    },
+    {
+      'quote': 'Đừng mang những lo âu của ngày hôm nay lên chiếc giường của đêm nay; hãy để ngày mai tự giải quyết phần việc của nó.',
+      'author': 'Dale Carnegie',
+    },
+    {
+      'quote': 'Ánh nắng buổi sáng là công tắc tự nhiên giúp đồng hồ sinh học biết chính xác khi nào cần buồn ngủ vào buổi tối.',
+      'author': 'TS. Andrew Huberman (Đại học Stanford)',
+    },
+    {
+      'quote': 'Một phòng ngủ mát mẻ, tối và yên tĩnh là nền tảng đơn giản nhưng mạnh mẽ nhất cho giấc ngủ sâu.',
+      'author': 'Hiệp hội Nghiên cứu Giấc ngủ (SRS)',
+    },
+    {
+      'quote': 'Power Nap không thay thế giấc ngủ đêm, nhưng là "trạm sạc nhanh" tuyệt vời cho buổi chiều năng suất.',
+      'author': 'DCSleep Science Note',
+    },
+    {
+      'quote': 'Thiếu ngủ kéo dài làm suy giảm khả năng tập trung tương đương với việc làm việc trong trạng thái say xỉn.',
+      'author': 'Trung tâm Kiểm soát Bệnh tật Hoa Kỳ (CDC)',
+    },
+    {
+      'quote': 'Hãy đối xử với giờ đi ngủ của bạn như một cuộc hẹn quan trọng nhất trong ngày và đừng bao giờ trễ hẹn.',
+      'author': 'Sleep Foundation',
+    },
+    {
+      'quote': 'Mỗi đêm ngon giấc là một cơ hội để cơ thể tự sửa chữa tế bào và cân bằng lại hệ miễn dịch.',
+      'author': 'Viện Sức khỏe Quốc gia Hoa Kỳ (NIH)',
+    },
+    {
+      'quote': 'Sự nhất quán tạo nên kỳ tích: đi ngủ đúng giờ hôm nay là món quà sức khỏe bạn tặng cho chính mình ngày mai.',
+      'author': 'DCSleep Wellness',
+    },
   ];
 
   void _nextQuote() {
