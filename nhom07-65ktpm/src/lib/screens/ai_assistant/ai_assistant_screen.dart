@@ -186,7 +186,7 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
       ),
       body: Column(
         children: [
-          // 1. Banner chế độ ngoại tuyến (tự ẩn khi Online phục hồi)
+          // 1. Banner chế độ ngoại tuyến (hiện tức thì khi mất mạng)
           if (aiProv.isOfflineMode)
             Container(
               width: double.infinity,
@@ -202,13 +202,51 @@ class _AIAssistantScreenState extends State<AIAssistantScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Chế độ ngoại tuyến: ${aiProv.offlineReason ?? "Tri thức cục bộ"}',
+                      'Không có kết nối Internet — Đang hoạt động ở chế độ ngoại tuyến (Tri thức cục bộ)',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: offlineBannerTextColor,
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+
+          // 2. Banner lỗi dịch vụ AI (chỉ hiện khi có mạng nhưng API lỗi)
+          if (!aiProv.isOfflineMode && aiProv.apiError != null)
+            Container(
+              width: double.infinity,
+              color: Colors.red.shade900.withValues(alpha: 0.35),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    size: 16,
+                    color: Colors.redAccent,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      aiProv.apiError!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.redAccent,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: aiProv.clearApiError,
                   ),
                 ],
               ),

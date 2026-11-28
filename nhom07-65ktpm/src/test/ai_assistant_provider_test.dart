@@ -114,6 +114,7 @@ void main() {
       databaseHelper: fakeDb,
       aiService: fakeAiService,
       apiKeyManager: fakeKeyManager,
+      enableNetworkListener: false,
     );
   });
 
@@ -177,7 +178,7 @@ void main() {
       expect(provider.isThinking, false);
     });
 
-    test('4. Fallback on HTTP 429 sets isOfflineMode, offlineReason containing 429, and isOffline = true', () async {
+    test('4. API error on HTTP 429 and 503 sets apiError without activating offline fallback', () async {
       fakeAiService.errorToThrow = AIServiceException(
         'Rate limit exceeded',
         statusCode: 429,
@@ -185,32 +186,37 @@ void main() {
 
       await provider.sendMessage('Ngủ trưa bao lâu?');
 
-      expect(provider.isOfflineMode, true);
-      expect(provider.offlineReason, contains('429'));
-      expect(provider.messages.last.isOffline, true);
-      expect(provider.messages.last.text, contains('Power Nap'));
+      expect(provider.isOfflineMode, false);
+      expect(provider.apiError, contains('429'));
       expect(provider.isThinking, false);
+
+      fakeAiService.errorToThrow = AIServiceException(
+        'Server Unavailable',
+        statusCode: 503,
+      );
+
+      await provider.sendMessage('Nhiệt độ phòng ngủ');
+      expect(provider.isOfflineMode, false);
+      expect(provider.apiError, contains('503'));
     });
 
-    test('5. Fallback classifies HTTP 401, TimeoutException, and SocketException with sleepContext', () async {
-      // HTTP 401
+    test('5. Error classification: HTTP 401 sets apiError, SocketException activates offline fallback with sleepContext', () async {
+      // HTTP 401: Lỗi API -> apiError
       fakeAiService.errorToThrow = AIServiceException(
         'Unauthorized',
         statusCode: 401,
       );
       await provider.sendMessage('Thở 4-7-8');
-      expect(provider.isOfflineMode, true);
-      expect(provider.offlineReason, contains('Khóa API không hợp lệ'));
-      expect(provider.messages.last.isOffline, true);
+      expect(provider.isOfflineMode, false);
+      expect(provider.apiError, contains('không hợp lệ'));
 
-      // TimeoutException
+      // TimeoutException -> apiError
       fakeAiService.errorToThrow = TimeoutException('Exceeded 10s');
       await provider.sendMessage('Uống cà phê sau mấy giờ?');
-      expect(provider.isOfflineMode, true);
-      expect(provider.offlineReason, contains('Quá thời gian'));
-      expect(provider.messages.last.isOffline, true);
+      expect(provider.isOfflineMode, false);
+      expect(provider.apiError, contains('quá chậm'));
 
-      // SocketException + sleepContext forwarded to OfflineSleepEngine
+      // SocketException -> Lỗi mạng thật -> isOfflineMode = true + OfflineSleepEngine
       fakeAiService.errorToThrow = const SocketException('No internet');
       await provider.sendMessage(
         'Đánh giá tiến độ giấc ngủ',
@@ -223,16 +229,14 @@ void main() {
       expect(provider.isThinking, false);
     });
 
-    test('6. ApiKeyManager Keystore exception gracefully falls back to OfflineSleepEngine without crashing', () async {
+    test('6. ApiKeyManager Keystore exception gracefully sets apiError without crashing', () async {
       fakeKeyManager.errorToThrow = Exception('Keystore failure');
 
       await provider.sendMessage('Khó ngủ trằn trọc');
 
       expect(fakeAiService.askCallCount, 0);
-      expect(provider.isOfflineMode, true);
-      expect(provider.offlineReason, isNotNull);
-      expect(provider.messages.last.isOffline, true);
-      expect(provider.messages.last.text, contains('20 phút'));
+      expect(provider.isOfflineMode, false);
+      expect(provider.apiError, isNotNull);
       expect(provider.isThinking, false);
     });
 

@@ -25,7 +25,7 @@ void main() {
       expect(httpCalled, false);
     });
 
-    test('transmits API key in x-goog-api-key header, not URL query, using gemini-2.5-flash', () async {
+    test('transmits API key in x-goog-api-key header, not URL query, using default fallback model', () async {
       late Uri capturedUri;
       late Map<String, String> capturedHeaders;
 
@@ -56,13 +56,13 @@ void main() {
       final res = await service.askAssistant(prompt: 'Hello');
 
       expect(res, 'Hãy thử kỹ thuật thở 4-7-8.');
-      expect(capturedUri.toString(), contains('gemini-2.5-flash:generateContent'));
+      expect(capturedUri.toString(), contains('gemini-3.5-flash-lite:generateContent'));
       expect(capturedUri.queryParameters.containsKey('key'), false);
       expect(capturedHeaders['x-goog-api-key'], 'test_secret_key');
       expect(capturedHeaders['Content-Type'], 'application/json');
     });
 
-    test('includes sleepContext in system_instruction and sets thinkingBudget: 0', () async {
+    test('includes sleepContext in systemInstruction and configures model payload cleanly', () async {
       late Map<String, dynamic> capturedBody;
 
       final mockClient = MockClient((request) async {
@@ -92,14 +92,15 @@ void main() {
         sleepContext: 'Mục tiêu: 8.0 giờ. Tỷ lệ tuân thủ: 85%.',
       );
 
-      final sysText = capturedBody['system_instruction']['parts'][0]['text'] as String;
+      final sysText = capturedBody['systemInstruction']['parts'][0]['text'] as String;
       expect(sysText, contains('DCSleep'));
       expect(sysText, contains('Mục tiêu: 8.0 giờ. Tỷ lệ tuân thủ: 85%.'));
 
       final genConfig = capturedBody['generationConfig'] as Map<String, dynamic>;
       expect(genConfig['temperature'], 0.7);
       expect(genConfig['maxOutputTokens'], 1024);
-      expect(genConfig['thinkingConfig']['thinkingBudget'], 0);
+      // Model mặc định đầu tiên là gemini-3.5-flash-lite không chứa thinkingConfig để tránh lỗi 400
+      expect(genConfig.containsKey('thinkingConfig'), false);
     });
 
     test('throws AIServiceException with statusCode on HTTP 429 and 401 errors', () async {
@@ -127,6 +128,41 @@ void main() {
           isA<AIServiceException>().having((e) => e.statusCode, 'statusCode', 401),
         ),
       );
+    });
+
+    test('automatically falls back to next model on HTTP 503 or 429', () async {
+      final capturedUrls = <String>[];
+      final mockClient = MockClient((request) async {
+        capturedUrls.add(request.url.toString());
+        if (capturedUrls.length == 1) {
+          // Model đầu tiên bị 503
+          return http.Response('{"error": "503 Unavailable"}', 503);
+        }
+        // Model thứ hai thành công
+        return http.Response(
+          jsonEncode({
+            'candidates': [
+              {
+                'content': {
+                  'parts': [
+                    {'text': 'Phản hồi từ model dự phòng'}
+                  ]
+                }
+              }
+            ]
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+
+      final service = GeminiAIService(client: mockClient)..setApiKey('test_key');
+      final result = await service.askAssistant(prompt: 'Xin chào');
+
+      expect(result, 'Phản hồi từ model dự phòng');
+      expect(capturedUrls.length, 2);
+      expect(capturedUrls[0], contains('gemini-3.5-flash-lite:generateContent'));
+      expect(capturedUrls[1], contains('gemini-3.1-flash-lite:generateContent'));
     });
 
     test('throws AIServiceException when response candidates are missing or empty', () async {

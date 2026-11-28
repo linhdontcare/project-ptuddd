@@ -116,19 +116,36 @@ void main() {
       databaseHelper: fakeDb,
       aiService: fakeAiService,
       apiKeyManager: fakeKeyManager,
+      enableNetworkListener: false,
     );
     sleepProvider = SleepProvider();
   });
 
   group('AIAssistantScreen Widget Tests', () {
-    testWidgets('displays offline banner with specific offlineReason when isOfflineMode is true', (tester) async {
+    testWidgets('displays offline banner when isOfflineMode is true', (tester) async {
       aiProvider.setOfflineModeForTest(true, reason: 'Mất kết nối Internet');
 
       await tester.pumpWidget(buildTestWidget());
       await tester.pump();
 
-      expect(find.textContaining('Chế độ ngoại tuyến: Mất kết nối Internet'), findsOneWidget);
+      expect(find.textContaining('Không có kết nối Internet'), findsOneWidget);
       expect(find.byIcon(Icons.wifi_off), findsOneWidget);
+    });
+
+    testWidgets('displays apiError banner when apiError is set and allows clearing', (tester) async {
+      aiProvider.setApiErrorForTest('Gemini API Key không hợp lệ');
+
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pump();
+
+      expect(find.text('Gemini API Key không hợp lệ'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pump();
+
+      expect(aiProvider.apiError, isNull);
+      expect(find.byIcon(Icons.error_outline), findsNothing);
     });
 
     testWidgets('hides offline banner when online and displays fixed Medical Disclaimer', (tester) async {
@@ -242,7 +259,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Chế độ ngoại tuyến:'), findsOneWidget);
+      expect(find.textContaining('Không có kết nối Internet'), findsOneWidget);
       expect(find.text('[Ngoại tuyến]'), findsOneWidget);
       expect(find.text('Phản hồi chế độ sáng'), findsOneWidget);
     });

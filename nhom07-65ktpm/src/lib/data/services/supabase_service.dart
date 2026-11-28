@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/ai_message_model.dart';
 import '../models/nap_record_model.dart';
 import '../models/sleep_goal_model.dart';
 import '../models/sleep_record_model.dart';
@@ -152,6 +153,32 @@ class SupabaseService {
       });
     } catch (e) {
       debugPrint('[SupabaseService] syncNapRecord error: $e');
+    }
+  }
+
+  // --- AI Messages ---
+  Future<void> syncAIMessage(AIMessageModel message) async {
+    final client = _client;
+    if (client == null) return;
+    try {
+      await client.from('ai_messages').insert({
+        'text': message.text,
+        'is_user': message.isUser,
+        'is_offline': message.isOffline,
+        'timestamp': message.timestamp.toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('[SupabaseService] syncAIMessage error: $e');
+    }
+  }
+
+  Future<void> clearAIMessages() async {
+    final client = _client;
+    if (client == null) return;
+    try {
+      await client.from('ai_messages').delete().gte('id', 0);
+    } catch (e) {
+      debugPrint('[SupabaseService] clearAIMessages error: $e');
     }
   }
 }
