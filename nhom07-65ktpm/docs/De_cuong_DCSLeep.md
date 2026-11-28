@@ -26,7 +26,7 @@ Trên thực tế, người dùng thường đặt báo thức hoặc ghi nhớ 
 
 Từ thực tế đó, nhóm lựa chọn đề tài **DCSleep – Ứng dụng hỗ trợ xây dựng kỷ luật và cải thiện thói quen ngủ bằng trí tuệ nhân tạo**. Ứng dụng được phát triển bằng Flutter, hướng tới nền tảng Android và có thể mở rộng sang iOS. Người dùng có thể thiết lập lịch ngủ, đặt mục tiêu, ghi nhận thời gian ngủ thực tế, quản lý giấc ngủ ngắn, nhận thông báo nhắc nhở và xem thống kê tiến độ.
 
-Bên cạnh các chức năng quản lý cơ bản, DCSleep tích hợp trợ lý AI thông qua API mô hình ngôn ngữ như Gemini hoặc OpenAI để giải đáp câu hỏi phổ biến về vệ sinh giấc ngủ, phân tích nhật ký do người dùng cung cấp và gợi ý điều chỉnh thói quen. Ứng dụng cũng xem xét các tính năng hỗ trợ hạn chế sử dụng điện thoại trước giờ ngủ. Google Family Link được đề cập như một công cụ phụ huynh có thể tự cấu hình trên thiết bị của trẻ; đề tài không giả định có API công khai để ứng dụng bên thứ ba trực tiếp điều khiển Family Link.
+Bên cạnh các chức năng quản lý cơ bản, DCSleep tích hợp trợ lý AI thông qua **Google Gemini API** (kèm cơ chế dự phòng ngoại tuyến `OfflineSleepEngine` và bộ lọc an toàn `SafetyGuardrails`) để giải đáp câu hỏi phổ biến về vệ sinh giấc ngủ, phân tích nhật ký do người dùng cung cấp và gợi ý điều chỉnh thói quen. Ứng dụng cũng cung cấp hướng dẫn hạn chế sử dụng điện thoại trước giờ ngủ thông qua Digital Wellbeing và chế độ Không làm phiền. Google Family Link được đề cập như một công cụ phụ huynh có thể tự cấu hình trên thiết bị của trẻ; đề tài không giả định có API công khai để ứng dụng bên thứ ba trực tiếp điều khiển Family Link.
 
 Đề tài phù hợp với môn học vì nhóm có thể vận dụng kiến thức Flutter/Dart, thiết kế giao diện di động, quản lý trạng thái, cơ sở dữ liệu, thông báo cục bộ, tích hợp API và xử lý dữ liệu người dùng.
 
@@ -51,18 +51,18 @@ Xây dựng ứng dụng di động DCSleep hỗ trợ người dùng hình thà
 ### 3.2. Mục tiêu cụ thể
 Hệ thống dự kiến thực hiện các nội dung sau:
 - Xây dựng ứng dụng di động có giao diện trực quan, dễ sử dụng và phù hợp với chủ đề sức khỏe giấc ngủ.
-- Cho phép người dùng đăng ký, đăng nhập hoặc sử dụng chế độ phù hợp với phạm vi triển khai của nhóm.
-- Cho phép thiết lập giờ đi ngủ, giờ thức dậy và mục tiêu thời lượng ngủ.
-- Xây dựng lịch nhắc chuẩn bị đi ngủ, nhắc đi ngủ và nhắc thức dậy bằng thông báo trên thiết bị.
-- Cho phép ghi nhận giờ bắt đầu ngủ, giờ thức dậy và cảm nhận sau khi ngủ.
-- Hỗ trợ thiết lập giấc ngủ ngắn, bộ đếm thời gian và nhắc kết thúc giấc ngủ trưa.
-- Hiển thị lịch sử ngủ và thống kê theo ngày, tuần hoặc tháng.
-- Tính toán chỉ số tuân thủ mục tiêu dựa trên dữ liệu nhật ký, không xem đây là chẩn đoán y tế.
-- Tích hợp trợ lý AI để trả lời câu hỏi phổ biến và đưa ra gợi ý dựa trên dữ liệu người dùng cung cấp.
-- Cung cấp nội dung hướng dẫn vệ sinh giấc ngủ, thư giãn và xây dựng thói quen trước khi ngủ.
-- Cho phép người dùng quản lý cài đặt thông báo và quyền riêng tư.
-- Khảo sát khả năng hỗ trợ người dùng hạn chế thời gian màn hình; hướng dẫn sử dụng Digital Wellbeing hoặc Family Link khi phù hợp, không phụ thuộc vào API Family Link không được công bố.
-- Kiểm thử các chức năng chính và hoàn thiện phiên bản có thể trình diễn.
+- Cho phép người dùng đăng ký, đăng nhập và đăng xuất; hỗ trợ bỏ trống Mã sinh viên/Lớp đối với người dùng không phải sinh viên.
+- Cho phép thiết lập nhiều lịch mục tiêu ngủ độc lập theo từng nhóm ngày trong tuần (ví dụ ngày thường và cuối tuần) với cơ chế tự động tách ngày trùng, kèm cảnh báo khi thời lượng ngủ < 6 giờ hoặc > 10 giờ.
+- Xây dựng lịch nhắc giờ đi ngủ và nhắc giờ thức dậy bằng thông báo cục bộ trên thiết bị (`flutter_local_notifications`).
+- Cho phép ghi nhận, chỉnh sửa, xóa giờ bắt đầu ngủ, giờ thức dậy, số lần thức giấc, đánh giá 1–5 sao và ghi chú.
+- Hỗ trợ thiết lập giấc ngủ ngắn (các mốc nhanh 10–30 phút và tùy chỉnh 1–180 phút có cảnh báo nếu > 30 phút), bộ đếm thời gian và thông báo khi kết thúc.
+- Hiển thị lịch sử ngủ và biểu đồ thống kê 7 ngày gần nhất bằng `fl_chart`.
+- Tính toán Chỉ số Kỷ luật Giấc ngủ minh bạch (tỷ lệ ngày đạt mục tiêu trong 7 bản ghi gần nhất, chênh lệch dưới 30 phút), không xem đây là chẩn đoán y tế.
+- Tích hợp trợ lý AI (Google Gemini API) với bộ lọc an toàn (`SafetyGuardrails`) và chế độ dự phòng ngoại tuyến (`OfflineSleepEngine`) để trả lời câu hỏi phổ biến và đưa ra gợi ý dựa trên dữ liệu người dùng cung cấp.
+- Cung cấp thư viện kiến thức giấc ngủ (17 bài viết chia theo 6 chủ đề kèm bộ lọc) và 20 câu trích dẫn khoa học về giấc ngủ.
+- Cho phép người dùng quản lý hồ sơ, giao diện Sáng/Tối, cài đặt thông báo, tùy chọn lưu lịch sử AI và xóa dữ liệu cá nhân.
+- Hướng dẫn sử dụng Digital Wellbeing, chế độ Không làm phiền hoặc Google Family Link khi phù hợp, không phụ thuộc vào API Family Link không được công bố.
+- Hoàn thiện ứng dụng và kiểm thử tự động (61 unit, widget và integration tests).
 
 ---
 
@@ -82,7 +82,7 @@ Flutter là nền tảng xây dựng giao diện và xử lý tương tác chín
 Module quản lý giấc ngủ đảm nhiệm việc tạo mục tiêu, lưu lịch ngủ dự kiến, ghi nhận thời gian ngủ thực tế, quản lý giấc ngủ ngắn và tính toán mức độ hoàn thành mục tiêu. Các kết quả được trình bày dưới dạng lịch sử và biểu đồ để người dùng dễ theo dõi.
 
 ### 4.3. AI Assistant và dịch vụ API
-Trợ lý AI tiếp nhận câu hỏi và dữ liệu nhật ký mà người dùng đồng ý chia sẻ, sau đó gửi yêu cầu đến API của mô hình ngôn ngữ như Gemini hoặc OpenAI. Phần gọi API nên được thực hiện thông qua lớp dịch vụ trung gian hoặc backend để hạn chế việc để lộ khóa API trong mã nguồn ứng dụng. AI chỉ cung cấp thông tin giáo dục và gợi ý thói quen chung, không chẩn đoán bệnh hoặc thay thế chuyên gia y tế.
+Trợ lý AI tiếp nhận câu hỏi và tóm tắt nhật ký mà người dùng đồng ý chia sẻ, sau đó gửi yêu cầu đến **Google Gemini API** (`GeminiAIService`). Khóa API được lưu trữ cục bộ an toàn thông qua `flutter_secure_storage` (`ApiKeyManager`). Hệ thống tích hợp lớp kiểm soát an toàn `SafetyGuardrails` (tiền lọc câu hỏi nhạy cảm và hậu lọc câu trả lời) và bộ máy `OfflineSleepEngine` tự động chuyển sang trả lời ngoại tuyến khi mất kết nối Internet (`connectivity_plus`). AI chỉ cung cấp thông tin giáo dục và gợi ý thói quen chung, không chẩn đoán bệnh hoặc thay thế chuyên gia y tế.
 
 ### 4.4. Notification Service
 Dịch vụ thông báo sử dụng thông báo cục bộ của thiết bị để nhắc người dùng chuẩn bị đi ngủ, đến giờ đi ngủ, thức dậy hoặc kết thúc giấc ngủ ngắn. Ứng dụng cần xử lý quyền thông báo, múi giờ, lịch nhắc lặp lại và trường hợp người dùng thay đổi lịch.
@@ -123,23 +123,19 @@ Flutter/Dart được sử dụng để xây dựng ứng dụng di động.
 - **Phạm vi ứng dụng:** Flutter/Dart dùng để xây dựng giao diện, xử lý tương tác, quản lý trạng thái, kiểm tra dữ liệu và kết nối các module.
 
 ### 6.2. Supabase (PostgreSQL) và SQLite
-Nhóm lựa chọn mô hình cơ sở dữ liệu song song: SQLite dùng để lưu trữ dữ liệu cục bộ và hỗ trợ sử dụng ngoại tuyến; **Supabase (PostgreSQL)** được sử dụng để lưu trữ, xác thực tài khoản và đồng bộ dữ liệu đám mây trên nhiều thiết bị.  
-- **Dữ liệu dự kiến gồm:**
-  - `Users`: thông tin hồ sơ và tùy chọn người dùng.
-  - `SleepGoals`: mục tiêu giờ ngủ, giờ thức dậy và thời lượng ngủ.
-  - `SleepRecords`: thời điểm bắt đầu ngủ, thức dậy, thời lượng và ghi chú.
-  - `NapRecords`: thời gian và thời lượng các giấc ngủ ngắn.
-  - `Reminders`: cấu hình các lịch nhắc.
-  - `AIConversations`: lịch sử trao đổi nếu người dùng bật chức năng lưu.
+Nhóm triển khai mô hình cơ sở dữ liệu song song: **SQLite** (`sqflite`) dùng để lưu trữ cục bộ và hỗ trợ sử dụng ngoại tuyến; **Supabase (PostgreSQL)** (`supabase_flutter`) dùng để lưu trữ và đồng bộ dữ liệu đám mây theo từng tài khoản (`user_email`) khi đăng nhập.  
+- **Các bảng dữ liệu trong hệ thống gồm:**
+  - **SQLite cục bộ (`dcsleep.db` – v2):** `users`, `sleep_goals`, `sleep_records`, `nap_records`, `reminders`, `ai_conversations`.
+  - **Supabase (PostgreSQL):** `users`, `sleep_goals`, `sleep_records`, `nap_records`, `ai_messages` (mỗi bản ghi mục tiêu, nhật ký, ngủ ngắn và hội thoại AI đều gắn `user_email` để tách biệt và đồng bộ đúng theo từng người dùng).
 
-### 6.3. Gemini API hoặc OpenAI API
-API mô hình ngôn ngữ được sử dụng để xây dựng trợ lý AI. Nhóm lựa chọn một nhà cung cấp phù hợp với hạn mức, chi phí và điều kiện sử dụng tại thời điểm triển khai. Ứng dụng gửi câu hỏi cùng phần dữ liệu cần thiết, nhận phản hồi và hiển thị cho người dùng. Không gửi dữ liệu cá nhân không cần thiết; cần thông báo rõ dữ liệu nào được gửi đến dịch vụ AI.
+### 6.3. Google Gemini API
+Nhóm sử dụng **Google Gemini API** để xây dựng Trợ lý AI Giấc ngủ (`GeminiAIService`), kết hợp `flutter_secure_storage` để quản lý khóa API an toàn trên thiết bị, `SafetyGuardrails` để lọc nội dung an toàn và `OfflineSleepEngine` để duy trì khả năng tư vấn cơ bản khi ngoại tuyến.
 
 ### 6.4. Thông báo cục bộ
-Nhóm có thể sử dụng thư viện Flutter hỗ trợ local notifications để lập lịch thông báo trên thiết bị. Chức năng này phục vụ nhắc giờ ngủ, giờ thức dậy, nhắc chuẩn bị đi ngủ và bộ đếm giấc ngủ ngắn. Việc thông báo có thể chịu ảnh hưởng bởi quyền của người dùng, chế độ tiết kiệm pin và chính sách nền của hệ điều hành.
+Nhóm sử dụng thư viện `flutter_local_notifications` kết hợp `timezone` để lập lịch thông báo lặp lại hàng tuần theo múi giờ địa phương trên thiết bị (nhắc giờ đi ngủ, nhắc giờ thức dậy theo các ngày áp dụng của từng lịch và thông báo kết thúc Power Nap), đồng thời xử lý xin quyền thông báo và exact alarm trên Android 13+.
 
 ### 6.5. Biểu đồ và quản lý trạng thái
-Thư viện biểu đồ như `fl_chart` có thể được sử dụng để trực quan hóa thời lượng ngủ theo ngày/tuần/tháng. Nhóm lựa chọn một giải pháp quản lý trạng thái phù hợp với cấu trúc dự án, ví dụ Provider, Riverpod hoặc Bloc; cần thống nhất một phương án trước khi triển khai.
+Thư viện `fl_chart` được sử dụng để trực quan hóa thời lượng ngủ 7 ngày gần nhất kèm đường mục tiêu. Nhóm thống nhất sử dụng **Provider** (`provider`) để quản lý trạng thái toàn ứng dụng thông qua 4 lớp chính: `SleepProvider`, `NapProvider`, `AIAssistantProvider` và `SettingsProvider`.
 
 ### 6.6. Google Family Link và Digital Wellbeing
 Google Family Link là ứng dụng/dịch vụ kiểm soát của phụ huynh, không được xem là API mở để DCSleep tùy ý truy cập hoặc điều khiển. Vì vậy, phiên bản bài tập lớn chỉ nên cung cấp nội dung hướng dẫn phụ huynh thiết lập Family Link và hướng dẫn người dùng sử dụng các tính năng Digital Wellbeing/Không làm phiền có sẵn trên thiết bị. Nếu hệ điều hành không cho phép ứng dụng truy cập một loại dữ liệu, nhóm không thu thập dữ liệu đó.
@@ -162,27 +158,26 @@ GitHub được sử dụng để lưu trữ mã nguồn, quản lý nhánh, the
 - Thư viện kiến thức về giấc ngủ.
 - Cài đặt tài khoản, thông báo và quyền riêng tư.
 
-### 7.2. Trang chủ
+### 7.2. Trang chủ (Dashboard)
 Trang chủ hiển thị thông tin tổng quan để người dùng nhanh chóng nắm được kế hoạch trong ngày, gồm:
-- Giờ đi ngủ và giờ thức dậy mục tiêu.
-- Thời gian còn lại đến giờ đi ngủ hoặc giờ thức dậy tiếp theo.
-- Tóm tắt nhật ký gần nhất.
-- Tiến độ duy trì mục tiêu trong tuần.
-- Lối tắt đến chức năng ngủ ngắn và trợ lý AI.
+- Lời chào cá nhân hóa theo khung giờ (sáng / chiều / tối) và ngày hiện tại.
+- Thẻ Kế hoạch Giấc ngủ Mục tiêu (tự động chọn lịch khớp với thứ hôm nay) kèm đồng hồ đếm ngược đến giờ đi ngủ tiếp theo.
+- Chỉ số Kỷ luật Giấc ngủ (%) và thời lượng ngủ trung bình 7 ngày.
+- Lối tắt nhanh đến Power Nap (15–20 phút) và Trợ lý AI.
+- Mục **Khoa học Giấc ngủ & Trích dẫn** gồm 20 câu trích dẫn kèm nút đổi câu.
+- Tóm tắt nhật ký giấc ngủ gần nhất và nút **Ghi nhật ký ngủ**.
 
-### 7.3. Thiết lập lịch ngủ
-Người dùng có thể thiết lập giờ đi ngủ, giờ thức dậy, ngày áp dụng và mục tiêu thời lượng ngủ. Ứng dụng đưa ra gợi ý tham khảo dựa trên thông tin người dùng nhập, đồng thời cho phép người dùng chủ động thay đổi. Lịch ngủ có thể được điều chỉnh khi có thay đổi về lịch học hoặc công việc.
+### 7.3. Thiết lập lịch ngủ (Mục tiêu)
+Người dùng có thể tạo và quản lý **nhiều lịch ngủ độc lập** (ví dụ lịch ngày thường và lịch cuối tuần) với giờ đi ngủ, giờ thức dậy và tổ hợp ngày áp dụng tùy chọn (`T2`–`CN`, kèm nút chọn nhanh `T2–T6` và `Cả tuần`). Hệ thống tự động tách ngày trùng giữa các lịch để tránh xung đột, đồng thời cảnh báo nếu thời lượng mục tiêu < 6 giờ hoặc > 10 giờ (khuyến nghị 7–9 giờ/đêm).
 
 ### 7.4. Nhắc nhở và báo thức
 Chức năng cho phép người dùng:
-- Đặt nhắc nhở trước giờ đi ngủ.
-- Nhận thông báo khi đến giờ chuẩn bị ngủ.
-- Thiết lập nhắc thức dậy.
-- Bật/tắt hoặc thay đổi lịch nhắc.
-- Chọn ngày lặp lại và âm thanh/thông báo phù hợp trong giới hạn hệ điều hành.
+- Bật/tắt công tắc **"Nhắc giờ ngủ & thức dậy"** cho từng lịch ngủ.
+- Nhận thông báo cục bộ lặp lại hàng tuần đúng giờ đi ngủ và giờ thức dậy theo các ngày áp dụng đã chọn.
+- Quản lý trạng thái bật/tắt các lịch nhắc trong phần Cài đặt.
 
 ### 7.5. Quản lý giấc ngủ ngắn (Power Nap)
-Người dùng có thể chọn thời lượng ngủ ngắn, khởi động bộ đếm và nhận thông báo khi hết thời gian. Ứng dụng có thể đưa ra khuyến nghị chung về giấc ngủ ngắn, chẳng hạn khoảng 10–20 phút đối với nhiều người trưởng thành, nhưng cần trình bày đây là gợi ý tham khảo chứ không phải quy tắc phù hợp cho tất cả mọi người.
+Người dùng có thể chọn các mốc thời lượng nhanh (**10, 15, 20, 30 phút**) hoặc tùy chỉnh từ **1 đến 180 phút** (có cảnh báo khuyến nghị không nên ngủ nhiều nếu chọn > 30 phút), điều khiển bộ đếm (Bắt đầu, Tạm dừng, Tiếp tục, Hủy), tự động lưu lịch sử vào SQLite/Supabase và phát thông báo khi kết thúc.
 
 ### 7.6. Nhật ký giấc ngủ
 Người dùng có thể nhập hoặc chỉnh sửa:
@@ -195,7 +190,7 @@ Người dùng có thể nhập hoặc chỉnh sửa:
 *Ứng dụng sử dụng dữ liệu do người dùng nhập để tạo lịch sử. Nếu không kết nối thiết bị đeo hoặc nguồn dữ liệu được hỗ trợ, ứng dụng không khẳng định tự động đo chính xác thời điểm người dùng thực sự ngủ.*
 
 ### 7.7. Thống kê và đánh giá kỷ luật
-Màn hình thống kê hiển thị thời lượng ngủ theo ngày, tuần hoặc tháng; số ngày đạt mục tiêu; mức chênh lệch giữa giờ ngủ dự kiến và giờ ngủ thực tế. Điểm kỷ luật, nếu triển khai, được tính theo tiêu chí minh bạch do nhóm định nghĩa, ví dụ tỷ lệ ngày người dùng ghi nhận và đạt khung giờ mục tiêu. Chỉ số này mang tính theo dõi thói quen, không phải điểm đánh giá sức khỏe.
+Màn hình thống kê hiển thị biểu đồ cột thời lượng ngủ **7 ngày gần nhất** (`fl_chart`) kèm đường mục tiêu màu vàng, độ tuân thủ mục tiêu (%) và thời lượng trung bình 7 ngày. Điểm kỷ luật được tính minh bạch dựa trên tỷ lệ ngày đạt thời lượng mục tiêu (cho phép chênh lệch dưới 30 phút) trong tối đa 7 bản ghi gần nhất. Chỉ số này mang tính theo dõi thói quen, không phải chẩn đoán y tế.
 
 ### 7.8. AI Sleep Assistant
 Trợ lý AI cho phép người dùng đặt câu hỏi bằng ngôn ngữ tự nhiên. Các tình huống sử dụng gồm:
@@ -208,7 +203,7 @@ Trợ lý AI cho phép người dùng đặt câu hỏi bằng ngôn ngữ tự 
 *AI cần được giới hạn vai trò ở cung cấp thông tin phổ thông và hỗ trợ hình thành thói quen. Khi người dùng mô tả triệu chứng kéo dài, nghiêm trọng hoặc có dấu hiệu cần chăm sóc y tế, ứng dụng nên khuyến nghị tìm tư vấn từ nhân viên y tế thay vì tự đưa ra chẩn đoán.*
 
 ### 7.9. Thư viện phương pháp cải thiện giấc ngủ
-Ứng dụng cung cấp các bài viết/nguyên tắc cơ bản như duy trì giờ ngủ ổn định, tạo môi trường ngủ yên tĩnh và thoải mái, hạn chế caffeine gần giờ ngủ, giảm ánh sáng và hoạt động kích thích trước khi ngủ, thư giãn bằng hít thở hoặc thiền nhẹ. Nội dung cần có nguồn tham khảo đáng tin cậy và được trình bày dưới dạng kiến thức phổ thông.
+Ứng dụng cung cấp **17 bài viết kiến thức khoa học** chia theo 6 chủ đề (**Thư giãn**, **Vệ sinh giấc ngủ**, **Môi trường**, **Dinh dưỡng**, **Sinh học**, **Power Nap**) kèm thanh lọc theo chủ đề, bao gồm kỹ thuật thở 4-7-8, thư giãn cơ PMR, kiểm soát ánh sáng xanh, nhiệt độ phòng 20–24°C, giới hạn caffeine và mẹo ngủ trưa đúng cách.
 
 ### 7.10. Quản lý thời gian sử dụng điện thoại
 DCSleep có thể nhắc người dùng giảm sử dụng điện thoại trước giờ ngủ và cung cấp hướng dẫn bật chế độ Không làm phiền, Focus hoặc Digital Wellbeing. Với trẻ em, phụ huynh có thể được hướng dẫn tự cấu hình Google Family Link. Chức năng này không bao gồm việc DCSleep tự khóa thiết bị hoặc điều khiển Family Link nếu không có quyền/API chính thức.
@@ -231,8 +226,8 @@ Người dùng có thể:
 - Trao đổi với trợ lý AI.
 - Quản lý cài đặt thông báo và quyền riêng tư.
 
-### 8.2. Quản trị viên (nếu triển khai backend quản trị)
-Quản trị viên có thể quản lý nội dung hướng dẫn, theo dõi trạng thái hoạt động tổng quát và xử lý phản hồi kỹ thuật. Quản trị viên không nên xem nội dung nhật ký cá nhân hoặc hội thoại AI nếu không có mục đích, quyền hạn và cơ chế bảo vệ phù hợp.
+### 8.2. Quản trị viên *(dự kiến mở rộng nếu triển khai backend quản trị)*
+Trong bản demo bài tập lớn hiện tại, hệ thống tập trung vào vai trò người dùng cá nhân và chưa triển khai giao diện quản trị viên riêng. Nếu mở rộng trong tương lai, quản trị viên có thể quản lý nội dung thư viện kiến thức và theo dõi trạng thái kỹ thuật tổng quát mà không xem dữ liệu riêng tư của người dùng.
 
 ### 8.3. Phụ huynh
 Nếu nhóm mở rộng kịch bản dành cho trẻ em, phụ huynh có thể được hướng dẫn sử dụng các công cụ kiểm soát của hệ điều hành và Google Family Link. Vai trò này được thực hiện trong ứng dụng Family Link của Google; DCSleep không mặc nhiên có quyền truy cập dữ liệu hoặc thay đổi thiết lập của phụ huynh.
@@ -245,7 +240,7 @@ Nếu nhóm mở rộng kịch bản dành cho trẻ em, phụ huynh có thể �
 | :--- | :--- | :--- |
 | **Mã Khánh Linh**<br>*(2351170602 – Nhóm trưởng)* | **Giao diện, tài khoản, hồ sơ và Cơ sở dữ liệu (Database)** | Thiết kế cấu trúc Flutter, mô hình dữ liệu và cơ sở dữ liệu (SQLite & Supabase), trang chủ, đăng ký/đăng nhập, hồ sơ người dùng, điều hướng và tích hợp các màn hình. Quản trị chung dự án và điều phối nhóm. |
 | **Vũ Bá Đài**<br>*(2351170577 – Thành viên)* | **Lịch ngủ, nhắc nhở và Power Nap** | Xây dựng thiết lập mục tiêu, lịch ngủ, thông báo cục bộ (`flutter_local_notifications`), bộ đếm giấc ngủ ngắn và xử lý thay đổi lịch. |
-| **Dương Quốc Vượng**<br>*(2351170634 – Thành viên)* | **AI Sleep Assistant** | Tích hợp Gemini hoặc OpenAI API qua lớp dịch vụ phù hợp, thiết kế prompt, giao diện chat, xử lý lỗi và giới hạn an toàn của câu trả lời. |
+| **Dương Quốc Vượng**<br>*(2351170634 – Thành viên)* | **AI Sleep Assistant** | Tích hợp Google Gemini API (`GeminiAIService`), quản lý khóa API an toàn (`ApiKeyManager`), thiết kế prompt, chế độ dự phòng ngoại tuyến (`OfflineSleepEngine`), bộ lọc an toàn (`SafetyGuardrails`) và giao diện chat. |
 | **Lê Văn Dân**<br>*(2251161963 – Thành viên)* | **Nhật ký giấc ngủ và Thống kê biểu đồ** | Xây dựng chức năng ghi nhận/chỉnh sửa/xem lịch sử nhật ký giấc ngủ, trực quan hóa biểu đồ thống kê (`fl_chart`), tính toán tiến độ kỷ luật, kiểm thử và hỗ trợ tích hợp toàn ứng dụng. |
 
 *Cả nhóm cùng thống nhất giao diện, quy ước mã nguồn, kiểm thử tích hợp, viết báo cáo và chuẩn bị nội dung trình diễn.*
@@ -256,15 +251,15 @@ Nếu nhóm mở rộng kịch bản dành cho trẻ em, phụ huynh có thể �
 Sau khi hoàn thành, nhóm mong muốn đạt được các kết quả sau:
 - Xây dựng được ứng dụng DCSleep bằng Flutter/Dart có thể chạy trên thiết bị hoặc trình giả lập Android.
 - Có giao diện chính và các màn hình chức năng rõ ràng, dễ sử dụng.
-- Người dùng có thể thiết lập giờ ngủ, giờ thức dậy và mục tiêu ngủ.
-- Ứng dụng có thể lập lịch và hiển thị thông báo nhắc nhở theo cấu hình.
-- Người dùng có thể sử dụng bộ đếm giấc ngủ ngắn.
-- Người dùng có thể ghi nhận và xem lại nhật ký ngủ.
-- Ứng dụng hiển thị được thống kê cơ bản theo ngày/tuần và tiến độ thực hiện mục tiêu.
-- Trợ lý AI có thể tiếp nhận câu hỏi và trả lời thông qua API được tích hợp.
-- Dữ liệu được lưu cục bộ bằng SQLite và đồng bộ đám mây qua Supabase (PostgreSQL).
-- Ứng dụng có nội dung hướng dẫn phương pháp cải thiện thói quen ngủ và quản lý thời gian sử dụng điện thoại.
-- Có tài liệu hướng dẫn sử dụng, mã nguồn và kịch bản kiểm thử để trình diễn.
+- Người dùng có thể thiết lập nhiều lịch ngủ linh hoạt theo từng nhóm ngày với giờ ngủ, giờ thức dậy và mục tiêu thời lượng ngủ.
+- Ứng dụng có thể lập lịch và hiển thị thông báo nhắc giờ đi ngủ, thức dậy và kết thúc Power Nap theo cấu hình.
+- Người dùng có thể sử dụng bộ đếm giấc ngủ ngắn (10–30 phút hoặc tùy chỉnh 1–180 phút).
+- Người dùng có thể ghi nhận, chỉnh sửa, xóa và xem lại nhật ký ngủ.
+- Ứng dụng hiển thị được biểu đồ thống kê 7 ngày gần nhất và Chỉ số Kỷ luật Giấc ngủ.
+- Trợ lý AI có thể tiếp nhận câu hỏi và trả lời thông qua Google Gemini API (kèm chế độ ngoại tuyến dự phòng).
+- Dữ liệu được lưu cục bộ bằng SQLite và đồng bộ đám mây theo từng tài khoản (`user_email`) qua Supabase (PostgreSQL).
+- Ứng dụng có thư viện 17 bài kiến thức giấc ngủ, 20 trích dẫn khoa học và hướng dẫn quản lý thời gian sử dụng điện thoại.
+- Có tài liệu hướng dẫn sử dụng, mã nguồn và bộ kiểm thử tự động gồm 61 test cases (`flutter test`) để trình diễn.
 - Các chức năng nâng cao như đồng bộ dữ liệu từ thiết bị đeo, phân tích giai đoạn ngủ, khóa ứng dụng tự động hoặc tích hợp trực tiếp Family Link chỉ được xem xét nếu có đủ thời gian, quyền truy cập và API chính thức phù hợp.
 
 ---
