@@ -191,55 +191,141 @@ class _SleepGoalScreenState extends State<SleepGoalScreen> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Thời lượng ngủ mục tiêu:',
-                      style: TextStyle(fontSize: 15),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Thời lượng ngủ mục tiêu:',
+                          style: TextStyle(fontSize: 15),
+                        ),
+                        Text(
+                          TimeUtils.formatDuration(_targetDuration),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: (_targetDuration < 6.0 || _targetDuration > 10.0)
+                                ? AppTheme.softAmber
+                                : AppTheme.softGreen,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      TimeUtils.formatDuration(_targetDuration),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.softGreen,
+                    if (_targetDuration < 6.0 || _targetDuration > 10.0) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: const [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            size: 16,
+                            color: AppTheme.softAmber,
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Khuyến nghị người trưởng thành nên ngủ từ 7–9 giờ mỗi đêm.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.softAmber,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Ngày áp dụng',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _weekdays.map((day) {
-                        return FilterChip(
-                          label: Text(day),
-                          selected: _activeDays.contains(day),
-                          onSelected: (selected) =>
-                              _toggleActiveDay(day, selected),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+            SizedBox(
+              width: double.infinity,
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Ngày áp dụng',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Row(
+                            children: [
+                              TextButton(
+                                onPressed: () => setState(() {
+                                  _activeDays
+                                    ..clear()
+                                    ..addAll(['T2', 'T3', 'T4', 'T5', 'T6']);
+                                }),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'T2–T6',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.accentCyan,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              TextButton(
+                                onPressed: () => setState(() {
+                                  _activeDays
+                                    ..clear()
+                                    ..addAll(_weekdays);
+                                }),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'Cả tuần',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.accentCyan,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _weekdays.map((day) {
+                          return FilterChip(
+                            label: Text(day),
+                            selected: _activeDays.contains(day),
+                            onSelected: (selected) =>
+                                _toggleActiveDay(day, selected),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
             SwitchListTile(
-              title: const Text('Nhắc giờ đi ngủ'),
+              title: const Text('Nhắc giờ ngủ & thức dậy'),
               value: context.watch<SleepProvider>().goal.isReminderEnabled,
               onChanged: _setReminderEnabled,
             ),

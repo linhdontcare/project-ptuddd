@@ -106,7 +106,10 @@ void main() {
     await tester.runAsync(provider.loadData);
     await tester.pump();
 
-    final switchTile = find.widgetWithText(SwitchListTile, 'Nhắc giờ đi ngủ');
+    final switchTile = find.widgetWithText(
+      SwitchListTile,
+      'Nhắc giờ ngủ & thức dậy',
+    );
     expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
 
     await tester.ensureVisible(switchTile);
