@@ -9,6 +9,7 @@ import '../models/sleep_record_model.dart';
 import '../models/nap_record_model.dart';
 import '../models/reminder_model.dart';
 import '../models/ai_message_model.dart';
+import '../services/supabase_service.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -365,7 +366,9 @@ class DatabaseHelper {
   Future<int> insertAIMessage(AIMessageModel msg) async {
     final db = await database;
     if (db == null) return 0;
-    return await db.insert(AppConstants.tableAIConversations, msg.toMap());
+    final id = await db.insert(AppConstants.tableAIConversations, msg.toMap());
+    SupabaseService.instance.syncAIMessage(msg);
+    return id;
   }
 
   // Alias for getAIMessages
@@ -374,7 +377,9 @@ class DatabaseHelper {
   Future<int> clearAllAIMessages() async {
     final db = await database;
     if (db == null) return 0;
-    return await db.delete(AppConstants.tableAIConversations);
+    final count = await db.delete(AppConstants.tableAIConversations);
+    SupabaseService.instance.clearAIMessages();
+    return count;
   }
 
   // --- Users Auth CRUD ---
