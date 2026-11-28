@@ -94,16 +94,6 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('DCSleep Dashboard'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_calendar_outlined),
-            tooltip: 'Chỉnh sửa mục tiêu ngủ',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SleepGoalScreen()),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Cài đặt & Tài khoản',
             onPressed: () {
